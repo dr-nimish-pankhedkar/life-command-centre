@@ -885,8 +885,13 @@ async function sbSave(){
 
 async function sbSaveWs(){
   try{
-    const body=JSON.stringify({id:'nimish',data:wsData,updated_at:new Date().toISOString()});
-    await fetch(SB_URL+'/rest/v1/lcc_weekly',{method:'POST',headers:sbH('resolution=merge-duplicates,return=minimal'),body});
+    const payload={id:'nimish',data:wsData,updated_at:new Date().toISOString()};
+    const checkRes=await fetch(SB_URL+'/rest/v1/lcc_weekly?id=eq.nimish&select=id',{headers:sbH()});
+    const rows=await checkRes.json();
+    const method=rows&&rows.length>0?'PATCH':'POST';
+    const url=rows&&rows.length>0?SB_URL+'/rest/v1/lcc_weekly?id=eq.nimish':SB_URL+'/rest/v1/lcc_weekly';
+    await fetch(url,{method,headers:{'Content-Type':'application/json','apikey':SB_ANON,'Authorization':'Bearer '+SB_ANON,'Prefer':'return=minimal'},body:JSON.stringify(payload)});
+    console.log('WS saved via', method);
   }catch(e){console.warn('WS save failed',e.message);}
 }
 
