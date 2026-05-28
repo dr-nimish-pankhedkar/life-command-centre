@@ -5,7 +5,7 @@ However, there are two architectural issues you should be aware of:
  2. **Concurrency (Last-Write-Wins):** Your app syncs by uploading the entire state object (D.tasks, D.buckets, etc.) at once. If two people have the app open on different devices, make changes while offline, and then both come online, the last device to sync will completely overwrite the other device's changes.
 ### The Complete, Patched File
 Here is the fully assembled index.html file. You can copy this entire block, save it as index.html, and it is ready to run.
-```html
+```html###
 <!DOCTYPE html>
 <html lang="en">
 <head>
