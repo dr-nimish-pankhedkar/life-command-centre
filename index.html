@@ -652,10 +652,9 @@ function simpleHash(s){let h=0;for(let i=0;i<s.length;i++)h=(Math.imul(31,h)+s.c
 
 async function loadPinsFromCloud(){
   try{
-    const controller=new AbortController();
-    const timeout=setTimeout(()=>controller.abort(),5000);
-    const res=await fetch(SB_URL+'/rest/v1/lcc_pins?id=eq.master&select=*',{headers:sbH(),signal:controller.signal});
-    clearTimeout(timeout);
+    const fetchPromise=fetch(SB_URL+'/rest/v1/lcc_pins?id=eq.master&select=*',{headers:sbH()});
+    const timeoutPromise=new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),5000));
+    const res=await Promise.race([fetchPromise,timeoutPromise]);
     if(!res.ok)return;
     const rows=await res.json();
     if(rows&&rows.length)localStorage.setItem(PW_KEY,JSON.stringify(rows[0].pins||{}));
