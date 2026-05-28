@@ -628,19 +628,25 @@ async function sbLoad(){
 async function sbSave(){
   try{
     const payload={id:'nimish',tasks:D.tasks,buckets:D.buckets,moods:D.moods,settings:D.settings,ws_buckets:D.wsBuckets,updated_at:new Date().toISOString()};
-    const patchRes=await fetch(SB_URL+'/rest/v1/lcc_data?id=eq.nimish',{method:'PATCH',headers:{'Content-Type':'application/json',apikey:SB_ANON,Authorization:'Bearer '+SB_ANON,Prefer:'return=minimal'},body:JSON.stringify(payload)});
-    if(patchRes.ok){console.log('Saved via PATCH');setSyncStatus('saved');return;}
-    const postRes=await fetch(SB_URL+'/rest/v1/lcc_data',{method:'POST',headers:{'Content-Type':'application/json',apikey:SB_ANON,Authorization:'Bearer '+SB_ANON,Prefer:'return=minimal'},body:JSON.stringify(payload)});
-    if(postRes.ok){console.log('Saved via POST');setSyncStatus('saved');}
-    else{const e=await postRes.text();console.error('Save failed:',postRes.status,e);setSyncStatus('error');}
+    // Use upsert - single call that inserts or updates
+    const res=await fetch(SB_URL+'/rest/v1/lcc_data',{
+      method:'POST',
+      headers:{'Content-Type':'application/json',apikey:SB_ANON,Authorization:'Bearer '+SB_ANON,Prefer:'resolution=merge-duplicates,return=minimal'},
+      body:JSON.stringify(payload)
+    });
+    if(res.ok){console.log('Upserted to Supabase OK');setSyncStatus('saved');}
+    else{const e=await res.text();console.error('Upsert failed:',res.status,e);setSyncStatus('error');}
   }catch(e){console.error('sbSave error:',e.message);setSyncStatus('local');}
 }
 
 async function sbSaveWs(){
   try{
     const payload={id:'nimish',data:wsData,updated_at:new Date().toISOString()};
-    const pRes=await fetch(SB_URL+'/rest/v1/lcc_weekly?id=eq.nimish',{method:'PATCH',headers:{'Content-Type':'application/json',apikey:SB_ANON,Authorization:'Bearer '+SB_ANON,Prefer:'return=minimal'},body:JSON.stringify(payload)});
-    if(!pRes.ok)await fetch(SB_URL+'/rest/v1/lcc_weekly',{method:'POST',headers:{'Content-Type':'application/json',apikey:SB_ANON,Authorization:'Bearer '+SB_ANON,Prefer:'return=minimal'},body:JSON.stringify(payload)});
+    await fetch(SB_URL+'/rest/v1/lcc_weekly',{
+      method:'POST',
+      headers:{'Content-Type':'application/json',apikey:SB_ANON,Authorization:'Bearer '+SB_ANON,Prefer:'resolution=merge-duplicates,return=minimal'},
+      body:JSON.stringify(payload)
+    });
   }catch(e){console.warn('WS save failed:',e.message);}
 }
 
@@ -661,7 +667,7 @@ async function loadPinsFromCloud(){
   }catch(e){console.warn('PIN load failed:',e.message);}
 }
 
-async function savePinToCloud(user,hash){const pins=JSON.parse(localStorage.getItem(PW_KEY)||'{}');pins[user]=hash;localStorage.setItem(PW_KEY,JSON.stringify(pins));try{const pRes=await fetch(SB_URL+'/rest/v1/lcc_pins?id=eq.master',{method:'PATCH',headers:{'Content-Type':'application/json',apikey:SB_ANON,Authorization:'Bearer '+SB_ANON,Prefer:'return=minimal'},body:JSON.stringify({id:'master',pins,updated_at:new Date().toISOString()})});if(!pRes.ok)await fetch(SB_URL+'/rest/v1/lcc_pins',{method:'POST',headers:{'Content-Type':'application/json',apikey:SB_ANON,Authorization:'Bearer '+SB_ANON,Prefer:'return=minimal'},body:JSON.stringify({id:'master',pins,updated_at:new Date().toISOString()})});}catch(e){console.warn('PIN save failed:',e.message);}}
+async function savePinToCloud(user,hash){const pins=JSON.parse(localStorage.getItem(PW_KEY)||'{}');pins[user]=hash;localStorage.setItem(PW_KEY,JSON.stringify(pins));try{await fetch(SB_URL+'/rest/v1/lcc_pins',{method:'POST',headers:{'Content-Type':'application/json',apikey:SB_ANON,Authorization:'Bearer '+SB_ANON,Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({id:'master',pins,updated_at:new Date().toISOString()})});}catch(e){console.warn('PIN save failed:',e.message);}}
 
 async function checkAuth(){
   try{const sess=JSON.parse(localStorage.getItem(SESSION_KEY)||'{}');if(sess.expiry&&Date.now()<sess.expiry&&sess.user){currentUser=sess.user;loadPinsFromCloud();bootApp();return;}}catch{}
