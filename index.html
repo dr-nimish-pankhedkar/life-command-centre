@@ -746,7 +746,7 @@ body.evening-mode .view{background:linear-gradient(180deg,#3A2015 0%,#FEF6EC 25%
         <button class="filter-toggle" id="filterToggle" onclick="toggleFilterDrawer()">&#9776; Sort &amp; Filter</button>
         <div id="activeChips" style="display:flex;gap:5px;flex-wrap:wrap;"></div>
       </div>
-      <div class="filter-drawer" id="filterDrawer" style="display:none;padding:10px 14px;background:var(--sf);border:1.5px solid var(--bd);border-radius:18px;margin-bottom:10px;flex-wrap:wrap;gap:6px;">
+      <div class="filter-drawer" id="filterDrawer" style="padding:10px 14px;background:var(--sf);border:1.5px solid var(--bd);border-radius:18px;margin-bottom:10px;flex-wrap:wrap;gap:6px;">
         <button class="sf-btn" id="sort-priority" onclick="setSort('priority')">&#8597; Priority</button>
         <button class="sf-btn" id="sort-date" onclick="setSort('date')">&#128197; Date</button>
         <button class="sf-btn" id="sort-bucket" onclick="setSort('bucket')">&#128230; Bucket</button>
@@ -1543,7 +1543,10 @@ function toggleFilterDrawer(){
   filterDrawerOpen=!filterDrawerOpen;
   var el=document.getElementById('filterDrawer');
   var btn=document.getElementById('filterToggle');
-  if(el)el.classList.toggle('open',filterDrawerOpen);
+  if(el){
+    el.style.display=filterDrawerOpen?'flex':'none';
+    el.classList.toggle('open',filterDrawerOpen);
+  }
   if(btn)btn.classList.toggle('active',filterDrawerOpen);
 }
 function updateActiveChips(){
