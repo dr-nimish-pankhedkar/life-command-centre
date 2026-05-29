@@ -465,7 +465,7 @@ input,select,textarea,button{font-family:'Nunito',sans-serif!important;}
 }
 
 /* Compact sort/filter bar */
-.sf-toolbar{display:none!important;visibility:hidden!important;height:0!important;overflow:hidden!important;margin:0!important;padding:0!important;}
+.sf-toolbar{display:none!important;}
 .toolbar-compact,.filter-toggle{display:flex!important;}
 
 /* Greeting card */
@@ -582,7 +582,13 @@ input,select,textarea,button{font-family:'Nunito',sans-serif!important;}
 .owner-none{border-left:3.5px solid #F0E0D0!important;}
 
 /* === PRIORITY SECTION HEADERS — minimal, no box === */
-.pri-hdr-btn{width:100%!important;display:flex!important;align-items:center!important;gap:8px!important;padding:12px 2px 6px!important;border:none!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;cursor:pointer!important;font-family:'Nunito',sans-serif!important;outline:none!important;}
+.pri-hdr-btn{
+  width:100%!important;display:flex!important;align-items:center!important;
+  gap:8px!important;padding:14px 2px 8px!important;
+  border:none!important;background:transparent!important;
+  cursor:pointer!important;font-family:'Nunito',sans-serif!important;
+  border-radius:0!important;box-shadow:none!important;
+}
 .pri-hdr-btn:hover{background:transparent!important;transform:none!important;}
 .pri-hdr-lbl{
   font-family:'Fredoka',sans-serif!important;
@@ -600,7 +606,7 @@ input,select,textarea,button{font-family:'Nunito',sans-serif!important;}
 .pri-section{margin-bottom:2px!important;}
 
 /* === PILLAR 5: ONE ACTION PER SCREEN — toolbar minimal === */
-.sf-toolbar{display:none!important;visibility:hidden!important;height:0!important;overflow:hidden!important;margin:0!important;padding:0!important;}
+.sf-toolbar{display:none!important;}
 .toolbar-compact{
   display:flex!important;gap:8px!important;
   align-items:center!important;margin-bottom:14px!important;
@@ -616,8 +622,8 @@ input,select,textarea,button{font-family:'Nunito',sans-serif!important;}
 /* === PILLAR 3: EMOTION-AWARE — time-based body bg === */
 body.morning-mode{background:linear-gradient(180deg,#FFF4EC 0%,#FEF6EC 40%)!important;}
 body.afternoon-mode{background:linear-gradient(180deg,#F0F4FF 0%,#FEF6EC 40%)!important;}
-body.evening-mode{background:var(--bg)!important;}
-body.evening-mode .view{background:var(--bg)!important;}
+body.evening-mode{background:linear-gradient(180deg,#1C0F06 0%,#2D1810 30%,#FEF6EC 60%)!important;}
+body.evening-mode .view{background:linear-gradient(180deg,#3A2015 0%,#FEF6EC 25%)!important;}
 
 /* === PILLAR 6: CELEBRATION — Weekly wins popup === */
 .wins-popup{
@@ -646,27 +652,6 @@ body.evening-mode .view{background:var(--bg)!important;}
 @keyframes pulse{0%,100%{opacity:.3;transform:scale(.85);}50%{opacity:1;transform:scale(1);}}
 @keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-8px);}75%{transform:translateX(8px);}}
 .typing-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--dm);animation:pulse .8s infinite;}
-
-/* FORCE OVERRIDES — highest specificity */
-.pri-hdr-btn,.pri-hdr-btn:hover,.pri-hdr-btn:focus{
-  border:none!important;background:none!important;
-  box-shadow:none!important;outline:none!important;
-  border-radius:0!important;padding:10px 0 6px!important;
-}
-.pri-section-body{
-  border:none!important;background:transparent!important;
-  padding:2px 0 8px!important;margin:0!important;
-}
-.sf-toolbar,.sf-toolbar *{display:none!important;}
-.task-swipe-inner{
-  background:#fff!important;
-  border-left-width:3.5px!important;
-  border-top:none!important;border-right:none!important;border-bottom:none!important;
-  border-radius:14px!important;
-  padding:13px 15px!important;
-  box-shadow:0 1px 8px rgba(45,27,14,.08)!important;
-}
-
 </style>
 </head>
 <body>
@@ -771,7 +756,7 @@ body.evening-mode .view{background:var(--bg)!important;}
         <button class="sf-btn" id="filter-done" onclick="toggleFilter('done')">&#10003; Done</button>
         <button class="sf-btn" onclick="clearFilters()" style="color:var(--r)">&#10005; Clear</button>
       </div>
-      <div class="sf-toolbar" style="display:none!important;height:0;overflow:hidden;margin:0;padding:0;" style="display:none!important;visibility:hidden;">
+      <div class="sf-toolbar" style="display:none;">
         <span class="sf-label">SORT</span>
         <button class="sf-btn active" id="sort-priority" onclick="setSort('priority')">&#8597; Priority</button>
         <button class="sf-btn" id="sort-date" onclick="setSort('date')">&#128197; Date</button>
@@ -1038,208 +1023,6 @@ body.evening-mode .view{background:var(--bg)!important;}
 
 
 <script>
-
-// ── ALL REQUIRED FUNCTIONS ───────────────────────────────
-
-function buildWsActForm(bid){
-  var form=document.createElement('div');form.className='ws-add-form';form.id='wsActForm-'+bid;form.style.display='none';
-  var inp=document.createElement('input');inp.className='ws-add-input';inp.id='wsActIn-'+bid;inp.placeholder='Action item...';
-  inp.onkeydown=function(e){if(e.key==='Enter')wsAddAction(bid);};
-  var sel=document.createElement('select');sel.id='wsActOwner-'+bid;
-  sel.style.cssText='background:var(--sf);border:1px solid var(--bd);border-radius:8px;padding:7px 8px;font-size:12px;color:var(--tx);outline:none';
-  ['Nimish','Priyanka','Joint'].forEach(function(l){var o=document.createElement('option');o.value=l.toLowerCase();o.textContent=l;sel.appendChild(o);});
-  var sb=document.createElement('button');sb.className='ws-add-save';sb.textContent='Add';sb.onclick=function(){wsAddAction(bid);};
-  var cb=document.createElement('button');cb.className='ws-add-cancel';cb.textContent='✕';cb.onclick=function(){wsHideActForm(bid);};
-  form.append(inp,sel,sb,cb);
-  var ab=document.createElement('button');ab.className='ws-add-btn';ab.id='wsActBtn-'+bid;ab.textContent='+ Add action item';ab.onclick=function(){wsShowActForm(bid);};
-  return form.outerHTML+ab.outerHTML;
-}
-
-function closeWinsPopup(){var el=document.getElementById("winsPopup");if(el)el.remove();}
-function showWinsPopup(done,total,streak){
-  var msgs=['You showed up this week. That makes you extraordinary.','A cafe, a career, a toddler, and still crushing tasks. Respect.','Small wins compound. You two are building something beautiful.','Progress over perfection. You nailed it this week.'];
-  var msg=msgs[Math.floor(Math.random()*msgs.length)];
-  var el=document.createElement('div');el.id='winsPopup';
-  el.style.cssText='position:fixed;inset:0;z-index:800;display:flex;align-items:center;justify-content:center;background:rgba(28,15,6,.5);backdrop-filter:blur(8px);animation:fadeIn .3s ease';
-  el.innerHTML='<div style="background:#fff;border-radius:28px;padding:32px 28px;max-width:340px;width:90%;text-align:center;box-shadow:0 24px 64px rgba(45,27,14,.25)">'
-    +'<div style="font-size:56px;margin-bottom:12px">&#127881;</div>'
-    +'<div style="font-family:Fredoka,sans-serif;font-size:24px;font-weight:700;color:#1A0F06;margin-bottom:8px">Weekly Wins!</div>'
-    +'<div style="font-size:13px;color:#8B6B50;line-height:1.7;margin-bottom:20px">'+msg+'</div>'
-    +'<div style="display:flex;gap:10px;justify-content:center;margin-bottom:22px">'
-    +'<div style="background:#FFF3E8;border-radius:14px;padding:12px 16px;min-width:80px"><div style="font-size:24px;font-weight:900;color:#FF6B35">'+done+'</div><div style="font-size:9px;font-weight:700;color:#C4A882;margin-top:2px">DONE</div></div>'
-    +'<div style="background:#FFF3E8;border-radius:14px;padding:12px 16px;min-width:80px"><div style="font-size:24px;font-weight:900;color:#FF6B35">'+streak+'</div><div style="font-size:9px;font-weight:700;color:#C4A882;margin-top:2px">STREAK</div></div>'
-    +'</div>'
-    +'<button onclick="closeWinsPopup()" style="background:linear-gradient(135deg,#FF6B35,#FF8C42);color:#fff;border:none;padding:13px 32px;border-radius:50px;font-size:14px;font-weight:800;cursor:pointer;font-family:Nunito,sans-serif">Keep it up! &#127775;</button>'
-    +'</div>';
-  document.body.appendChild(el);
-  try{spawnConfetti(200,300);}catch(e){}
-}
-
-function initSwipe(el,taskId){
-  var startX=0;var isDragging=false;var inner=el.querySelector('.task-swipe-inner');
-  if(!inner)return;
-  el.addEventListener('touchstart',function(e){startX=e.touches[0].clientX;isDragging=true;},{passive:true});
-  el.addEventListener('touchmove',function(e){
-    if(!isDragging)return;
-    var dx=e.touches[0].clientX-startX;
-    if(dx<0&&dx>-130){inner.style.transform='translateX('+dx+'px)';inner.style.transition='none';}
-  },{passive:true});
-  el.addEventListener('touchend',function(e){
-    isDragging=false;inner.style.transition='';
-    var dx=e.changedTouches[0].clientX-startX;
-    if(dx<-60){inner.classList.add('swiped');}
-    else{inner.style.transform='';inner.classList.remove('swiped');}
-  });
-}
-
-function closeAllSwipes(){
-  document.querySelectorAll('.task-swipe-inner.swiped').forEach(function(el){
-    el.classList.remove('swiped');el.style.transform='';
-  });
-}
-
-function switchUser(){
-  localStorage.removeItem('lcc-session');
-  D=null;if(typeof wsData!=='undefined')wsData={weeks:{}};
-  if(typeof chatOpen!=='undefined')chatOpen=false;
-  if(typeof panelHistory!=='undefined')panelHistory=[];
-  var ml=document.getElementById('mainLayout');if(ml)ml.style.display='none';
-  var mn=document.getElementById('mobNav');if(mn)mn.style.display='none';
-  var ls=document.getElementById('lockScreen');if(ls)ls.style.display='flex';
-  var li=document.getElementById('lockIn');if(li){li.style.display='block';li.value='';}
-  var lr=document.getElementById('lockRem');if(lr&&lr.parentElement)lr.parentElement.style.display='flex';
-  var lb=document.getElementById('lockBtn');if(lb){lb.style.background='#FF6B35';lb.textContent='Unlock →';}
-  var le=document.getElementById('lockErr');if(le)le.textContent='';
-  var next=currentUser==='nimish'?'priyanka':'nimish';
-  selectWho(next);
-}
-
-
-function checkWeeklyWins(){
-  try{
-    if(typeof _winsShown!=='undefined'&&_winsShown)return;
-    var today=new Date().toISOString().split('T')[0];
-    var lastWins=localStorage.getItem('lcc-wins-shown');
-    if(lastWins===today)return;
-    if(new Date().getDay()!==1)return;
-    if(!D||!D.tasks)return;
-    var done=D.tasks.filter(function(t){return t.done&&(!t.owner||t.owner===currentUser);}).length;
-    var streak=getStreakData().count;
-    if(done===0&&streak<2)return;
-    _winsShown=true;
-    localStorage.setItem('lcc-wins-shown',today);
-    showWinsPopup(done,D.tasks.filter(function(t){return !t.owner||t.owner===currentUser;}).length,streak);
-  }catch(e){console.warn('checkWeeklyWins error:',e.message);}
-}
-
-var _winsShown=false;
-
-function esc(s){
-  if(s===null||s===undefined)return '';
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-}
-
-
-function applyEmotionMode(){
-  var h=new Date().getHours();
-  document.body.classList.remove('morning-mode','afternoon-mode','evening-mode');
-  if(h>=5&&h<12)document.body.classList.add('morning-mode');
-  else if(h>=12&&h<18)document.body.classList.add('afternoon-mode');
-  else document.body.classList.add('evening-mode');
-}
-
-function updateActiveChips(){
-  var el=document.getElementById('activeChips');if(!el)return;
-  var chips=[];
-  if(typeof currentSort!=='undefined'&&currentSort!=='priority'){
-    chips.push('<span style="font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;background:linear-gradient(135deg,#FF6B35,#FF8C42);color:#fff">'+(currentSort==='date'?'Date':'Bucket')+'</span>');
-  }
-  if(typeof activeFilters!=='undefined'){
-    activeFilters.forEach(function(f){
-      var lbl={p1:'P1',p2:'P2',sync:'Sync',done:'Done'};
-      chips.push('<span style="font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;background:linear-gradient(135deg,#FF6B35,#FF8C42);color:#fff">'+lbl[f]+'</span>');
-    });
-  }
-  el.innerHTML=chips.join('');
-}
-
-function toggleFilterDrawer(){
-  filterDrawerOpen=!filterDrawerOpen;
-  var el=document.getElementById('filterDrawer');
-  var btn=document.getElementById('filterToggle');
-  if(el){el.style.display=filterDrawerOpen?'flex':'none';}
-  if(btn)btn.classList.toggle('active',filterDrawerOpen);
-}
-
-function toggleSection(pri){
-  sectionState[pri]=!sectionState[pri];
-  var body=document.getElementById('sec-body-'+pri);
-  var chev=document.getElementById('sec-chev-'+pri);
-  var hdr=document.getElementById('sec-hdr-'+pri);
-  if(body)body.style.display=sectionState[pri]?'block':'none';
-  if(chev)chev.classList.toggle('open',sectionState[pri]);
-  if(hdr)hdr.classList.toggle('open',sectionState[pri]);
-}
-
-function renderSections(fp,fd){
-  var html='';
-  ['P1','P2','P3'].forEach(function(p){
-    var g=fp.filter(function(t){return t.priority===p;});if(!g.length)return;
-    var m=PRI_META[p];var open=sectionState[p];
-    html+='<div class="pri-section"><button class="pri-hdr-btn '+(open?'open':'')+'" id="sec-hdr-'+p+'" data-p="'+p+'" onclick="toggleSection(this.dataset.p)">'
-      +'<div style="width:4px;height:16px;border-radius:4px;background:'+m.color+';flex-shrink:0;"></div>'
-      +'<span style="font-size:12px;font-weight:800;color:'+m.color+';font-family:Fredoka,sans-serif;letter-spacing:.5px;">'+p+' &middot; '+m.label.toUpperCase()+'</span>'
-      +'<span style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;background:'+m.color+'18;color:'+m.color+';margin-left:4px;">'+g.length+'</span>'
-      +'<span class="pri-chevron '+(open?'open':'')+'" id="sec-chev-'+p+'" style="margin-left:auto;font-size:10px;color:var(--dm,#C4A882);transition:transform .2s;">&#9660;</span>'
-      +'</button>'
-      +'<div id="sec-body-'+p+'" style="'+(open?'display:block':'display:none')+';padding:2px 0 6px;">';
-    g.forEach(function(t){html+=tSwipeRowHTML(t,false);});
-    html+='</div></div>';
-  });
-  if(fd.length){
-    var dOpen=sectionState['done'];
-    html+='<div class="pri-section" style="margin-top:6px;">'
-      +'<button class="done-chip '+(dOpen?'open':'')+'" data-p="done" onclick="toggleSection(this.dataset.p)" style="display:flex;align-items:center;gap:8px;padding:8px 14px;background:var(--sf,#fff);border:1.5px dashed #E0D0C0;border-radius:12px;color:#C4A882;cursor:pointer;width:100%;font-family:Nunito,sans-serif;font-size:12px;font-weight:700;">'
-      +'<span>&#10003;</span><span style="flex:1">Completed today</span>'
-      +'<span style="background:#EEFFEF;color:#2ED573;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:800;">'+fd.length+'</span>'
-      +'<span id="sec-chev-done" style="font-size:10px;color:#C4A882;transition:transform .2s;'+(dOpen?'transform:rotate(180deg)':'')+'">&#9660;</span>'
-      +'</button>'
-      +'<div id="sec-body-done" style="'+(dOpen?'display:block':'display:none')+';padding:2px 0 6px;">';
-    fd.forEach(function(t){html+=tSwipeRowHTML(t,true);});
-    html+='</div></div>';
-  }
-  return html;
-}
-
-
-function openQuickAdd(){
-  var drawer=document.getElementById('qaDrawer');
-  var overlay=document.getElementById('qaOverlay');
-  var bktSel=document.getElementById('qaBkt');
-  if(bktSel&&D){bktSel.innerHTML=D.buckets.map(function(b){return '<option value="'+b.id+'">'+b.icon+' '+b.label+'</option>';}).join('');}
-  if(drawer)drawer.style.transform='translateY(0)';
-  if(overlay)overlay.style.display='block';
-  try{if(navigator.vibrate)navigator.vibrate([10]);}catch(e){}
-  setTimeout(function(){var i=document.getElementById('qaInput');if(i)i.focus();},300);
-}
-function closeQuickAdd(){
-  var drawer=document.getElementById('qaDrawer');
-  var overlay=document.getElementById('qaOverlay');
-  if(drawer)drawer.style.transform='translateY(100%)';
-  if(overlay)overlay.style.display='none';
-  var i=document.getElementById('qaInput');if(i)i.value='';
-}
-function submitQuickAdd(){
-  var txt=document.getElementById('qaInput');
-  var bkt=document.getElementById('qaBkt');
-  var pri=document.getElementById('qaPri');
-  if(!txt||!txt.value.trim()){closeQuickAdd();return;}
-  D.tasks.push({id:Date.now(),text:txt.value.trim(),bucket:bkt?bkt.value:(D.buckets[0]||{id:'cafe'}).id,priority:pri?pri.value:'P2',done:false,created:Date.now(),owner:currentUser});
-  try{if(navigator.vibrate)navigator.vibrate([20,10,20]);}catch(e){}
-  closeQuickAdd();
-  saveData();renderBoard();renderSidebarStats();populateSidebar();
-}
-
 const SB_URL='https://himfurxmsiemhqzhsqpm.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhpbWZ1cnhtc2llbWhxemhzcXBtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3OTM4NjAsImV4cCI6MjA5NTM2OTg2MH0.eaMiLYHi1-HhSMSdyIYUoh5UCwnnY7F25DKXJeU_7Ys';
 const SB_PUB='sb_publishable_9EY8iCKrzA9wXUJG3aqt3w_Dv90f8HG';
@@ -1257,10 +1040,6 @@ const LAYOUTS=[{id:'clean',name:'Clean List',desc:'Polished rows \u2014 perfect 
 const SKIN_KEY='lcc-skins';
 const LAYOUT_KEY='lcc-layouts';
 let D=null,wsData={weeks:{}};
-var filterDrawerOpen=false;
-var sectionState={P1:true,P2:true,P3:false,done:false};
-var panelHistory=[];
-var chatOpen=false;
 let activeBucket='all',currentView='board',currentUser='nimish';
 let mMood='',eMood='',chatHistory=[],saveTimer=null,wsSaveTimer=null;
 let addFormOpen=false,ritualDone=false,rMode=new Date().getHours()>=17?'evening':'morning';
@@ -1582,8 +1361,8 @@ function exportData(){const blob=new Blob([JSON.stringify({tasks:D,weekly:wsData
 function clearData(){if(confirm('Reset everything? Cannot be undone.')){localStorage.clear();location.reload();}}
 
 // ── CHAT PANEL ────────────────────────────────────────────
-
-
+var panelHistory=[];
+var chatOpen=false;
 
 function toggleChatPanel(){
   chatOpen=!chatOpen;
@@ -1733,50 +1512,277 @@ function initOffline(){
 
 // ── COMPACT GREETING ──────────────────────────────────────
 function renderGreeting(){
-  var el=document.getElementById('greetingCard');
-  if(!el||!D)return;
+  var el=document.getElementById('greetingCard');if(!el||!D)return;
   var h=new Date().getHours();
   var n=currentUser==='nimish'?'Dr. Nimish':currentUser==='guest'?'Guest':'Priyanka';
   var g=h<12?'Good morning':h<17?'Good afternoon':'Good evening';
   var pending=D.tasks.filter(function(t){return !t.done&&(!t.owner||t.owner===currentUser);}).length;
   var p1=D.tasks.filter(function(t){return !t.done&&t.priority==='P1'&&(!t.owner||t.owner===currentUser);}).length;
   var streak=updateStreak();
-  var streakIcon=streak>0?' '+streakEmoji(streak):'';
-  var grad=h<12?'linear-gradient(135deg,#FF6B35,#FF8C42)':h<17?'linear-gradient(135deg,#FF8C42,#FFA552)':'linear-gradient(135deg,#3A2015,#FF6B35)';
-  el.style.cssText='background:'+grad+';border-radius:14px;padding:10px 14px;margin-bottom:12px;color:#fff;display:flex;align-items:center;gap:8px;min-height:0;overflow:hidden;';
-  var statHTML='';
-  if(pending||p1){
-    statHTML='<div style="display:flex;gap:4px;flex-shrink:0;">';
-    if(pending)statHTML+='<div style="background:rgba(255,255,255,.18);border-radius:8px;padding:3px 8px;font-size:11px;font-weight:800;white-space:nowrap;">'+pending+' left</div>';
-    if(p1)statHTML+='<div style="background:rgba(255,71,87,.35);border-radius:8px;padding:3px 8px;font-size:11px;font-weight:800;white-space:nowrap;">'+p1+' urgent</div>';
-    statHTML+='</div>';
-  }
-  el.innerHTML=
-    '<div style="flex:1;min-width:0;overflow:hidden;">'
-      +'<div style="font-family:Fredoka,sans-serif;font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+g+', '+n+'!'+streakIcon+'</div>'
-      +(streak>0?'<div style="font-size:10px;opacity:.8;margin-top:1px;">'+(streak===1?'Day 1 — welcome back!':streak+' day streak')+'</div>':'')
+  var streakHTML=streak>0?'<span style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.2);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:800;margin-top:3px">'
+    +'<span style="font-size:13px">'+streakEmoji(streak)+'</span>'
+    +(streak===1?'Day 1 &mdash; welcome back!':streak+' day streak')
+    +'</span>':'';
+  var grad=h<12?'linear-gradient(135deg,#FF6B35,#FF8C42,#FFA552)'
+    :h<17?'linear-gradient(135deg,#FF8C42,#FFA552,#FFD166)'
+    :'linear-gradient(135deg,#1C0F06,#3A2015,#FF6B35)';
+  el.style.background=grad;
+  el.innerHTML='<div style="flex:1">'
+    +'<div class="greeting-compact-name">'+g+', '+n+'!</div>'
+    +(streakHTML?'<div class="greeting-compact-sub">'+streakHTML+'</div>':'')
     +'</div>'
-    +statHTML;
+    +'<div style="display:flex;gap:6px;">'
+    +(pending?'<div class="greeting-stat-box"><div class="greeting-stat-box-n">'+pending+'</div><div class="greeting-stat-box-l">PENDING</div></div>':'')
+    +(p1?'<div class="greeting-stat-box" style="background:rgba(255,71,87,.25)"><div class="greeting-stat-box-n" style="color:#FCA5A5">'+p1+'</div><div class="greeting-stat-box-l">URGENT</div></div>':'')
+    +'</div>';
 }
+
+// ── COMPACT TOOLBAR ───────────────────────────────────────
+var filterDrawerOpen=false;
+function toggleFilterDrawer(){
+  filterDrawerOpen=!filterDrawerOpen;
+  var el=document.getElementById('filterDrawer');
+  var btn=document.getElementById('filterToggle');
+  if(el){
+    el.style.display=filterDrawerOpen?'flex':'none';
+    el.classList.toggle('open',filterDrawerOpen);
+  }
+  if(btn)btn.classList.toggle('active',filterDrawerOpen);
+}
+function updateActiveChips(){
+  var el=document.getElementById('activeChips');if(!el)return;
+  var chips=[];
+  if(currentSort!=='priority'){
+    chips.push('<span class="active-chip">'+(currentSort==='date'?'&#128197; Date':'&#128230; Bucket')+'</span>');
+  }
+  activeFilters.forEach(function(f){
+    var lbl={p1:'&#9889; P1',p2:'&#128204; P2',sync:'&#8617; Sync',done:'&#10003; Done'};
+    chips.push('<span class="active-chip">'+lbl[f]+'</span>');
+  });
+  el.innerHTML=chips.join('');
+}
+
+// ── COLLAPSIBLE SECTIONS ──────────────────────────────────
+var sectionState={P1:true,P2:true,P3:false,done:false};
+
+function toggleSection(pri){
+  sectionState[pri]=!sectionState[pri];
+  var body=document.getElementById('sec-body-'+pri);
+  var chev=document.getElementById('sec-chev-'+pri);
+  var hdr=document.getElementById('sec-hdr-'+pri);
+  if(body)body.classList.toggle('hidden',!sectionState[pri]);
+  if(chev)chev.classList.toggle('open',sectionState[pri]);
+  if(hdr)hdr.classList.toggle('open',sectionState[pri]);
+}
+
+function renderSections(fp,fd){
+  var html='';
+  ['P1','P2','P3'].forEach(function(p){
+    var g=fp.filter(function(t){return t.priority===p;});
+    if(!g.length)return;
+    var m=PRI_META[p];
+    var open=sectionState[p];
+    html+='<div class="pri-section">'
+      +'<button class="pri-hdr-btn '+(open?'open':'')+'" id="sec-hdr-'+p+'" data-p="'+p+'" onclick="toggleSection(this.dataset.p)">'
+      +'<div style="width:4px;height:16px;border-radius:4px;background:'+m.color+';flex-shrink:0;"></div>'
+      +'<span style="font-size:12px;font-weight:800;color:'+m.color+'">'+p+' &middot; '+m.label.toUpperCase()+'</span>'
+      +'<span class="pri-count-chip" style="background:'+m.color+'18;color:'+m.color+';">'+g.length+'</span>'
+      +'<span class="pri-chevron '+(open?'open':'')+'" id="sec-chev-'+p+'">&#9660;</span>'
+      +'</button>'
+      +'<div class="pri-section-body '+(open?'':'hidden')+'" id="sec-body-'+p+'">';
+    g.forEach(function(t){html+=tRowHTML(t,false);});
+    html+='</div></div>';
+  });
+  if(fd.length){
+    var dOpen=sectionState['done'];
+    html+='<div class="pri-section" style="margin-top:6px;">'
+      +'<button class="done-chip '+(dOpen?'open':'')+'" id="sec-hdr-done" data-p="done" onclick="toggleSection(this.dataset.p)">'
+      +'<span>&#10003;</span><span style="flex:1">Completed today</span>'
+      +'<span style="background:#EEFFEF;color:#2ED573;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:800;">'+fd.length+'</span>'
+      +'<span class="pri-chevron '+(dOpen?'open':'')+'" id="sec-chev-done">&#9660;</span>'
+      +'</button>'
+      +'<div class="pri-section-body '+(dOpen?'':'hidden')+'" id="sec-body-done">';
+    fd.forEach(function(t){html+=tRowHTML(t,true);});
+    html+='</div></div>';
+  }
+  return html;
+}
+
+// ── EMPTY STATES ──────────────────────────────────────────
+var ESTATES={
+  noTasks:'<div class="empty-state"><div class="empty-icon">&#9999;&#65039;</div><div class="empty-title">Nothing here yet</div><div class="empty-sub">Tap &quot;+ Task&quot; to start capturing. Your future self will thank you.</div></div>',
+  allDone:'<div class="all-done-state"><div class="all-done-icon">&#127881;</div><div class="all-done-title">Board cleared!</div><div class="all-done-sub">Every single task done. You manage a cafe, a career, a toddler, and yourself. Truly extraordinary.</div></div>',
+  filtered:'<div class="empty-state"><div class="empty-icon">&#128269;</div><div class="empty-title">No matches</div><div class="empty-sub">Nothing with the current filters. Try clearing them.</div><div style="margin-top:14px"><button class="btn btn-sm btn-sec" onclick="clearFilters()">Clear Filters</button></div></div>',
+};
+
+// ── GUEST PROFILE ─────────────────────────────────────────
+var GUEST_TASKS=[
+  {id:101,text:'Review cafe monthly P&L',bucket:'cafe',priority:'P1',done:false,created:Date.now()-172800000,owner:'guest'},
+  {id:102,text:'Plan weekend family outing',bucket:'family',priority:'P2',done:false,created:Date.now()-86400000,owner:'guest'},
+  {id:103,text:'30 min morning run',bucket:'health',priority:'P2',done:true,created:Date.now()-7200000,owner:'guest'},
+  {id:104,text:'Read AI paper on LLMs',bucket:'devp',priority:'P3',done:false,created:Date.now()-259200000,owner:'guest'},
+  {id:105,text:'Pay quarterly taxes',bucket:'finance',priority:'P1',done:false,created:Date.now()-345600000,owner:'guest'},
+  {id:106,text:'Book son pediatrician',bucket:'family',priority:'P1',done:false,created:Date.now()-86400000,owner:'guest'},
+];
+
+// ── buildWsActForm ────────────────────────────────────────
+function buildWsActForm(bid){
+  var form=document.createElement('div');
+  form.className='ws-add-form';form.id='wsActForm-'+bid;form.style.display='none';
+  var inp=document.createElement('input');inp.className='ws-add-input';inp.id='wsActIn-'+bid;inp.placeholder='Action item...';
+  inp.onkeydown=function(e){if(e.key==='Enter')wsAddAction(bid);};
+  var sel=document.createElement('select');sel.id='wsActOwner-'+bid;
+  sel.style.cssText='background:var(--sf);border:1px solid var(--bd);border-radius:8px;padding:7px 8px;font-size:12px;color:var(--tx);outline:none';
+  ['Nimish','Priyanka','Joint'].forEach(function(l){var o=document.createElement('option');o.value=l.toLowerCase();o.textContent=l;sel.appendChild(o);});
+  var saveBtn=document.createElement('button');saveBtn.className='ws-add-save';saveBtn.textContent='Add';saveBtn.onclick=function(){wsAddAction(bid);};
+  var cancelBtn=document.createElement('button');cancelBtn.className='ws-add-cancel';cancelBtn.textContent='\u2715';cancelBtn.onclick=function(){wsHideActForm(bid);};
+  form.append(inp,sel,saveBtn,cancelBtn);
+  var addBtn=document.createElement('button');addBtn.className='ws-add-btn';addBtn.id='wsActBtn-'+bid;addBtn.textContent='+ Add action item';addBtn.onclick=function(){wsShowActForm(bid);};
+  return form.outerHTML+addBtn.outerHTML;
+}
+
+// ── wsColHTML ─────────────────────────────────────────────
+
+
+// wsShowForm with Enter key
+
+
+
+
+
+
+
+function switchUser(){
+  // Clear session so lock screen shows
+  localStorage.removeItem('lcc-session');
+  // Reset app state
+  D=null;wsData={weeks:{}};
+  chatOpen=false;panelHistory=[];
+  // Hide main, show lock
+  document.getElementById('mainLayout').style.display='none';
+  document.getElementById('mobNav').style.display='none';
+  document.getElementById('lockScreen').style.display='flex';
+  // Reset lock screen UI
+  var li=document.getElementById('lockIn');if(li){li.style.display='block';li.value='';}
+  var lr=document.getElementById('lockRem');if(lr&&lr.parentElement)lr.parentElement.style.display='flex';
+  var lb=document.getElementById('lockBtn');if(lb){lb.textContent='Unlock →';}
+  document.getElementById('lockErr').textContent='';
+  // Pre-select opposite user for quick switch
+  var nextUser=currentUser==='nimish'?'priyanka':'nimish';
+  selectWho(nextUser);
+}
+
+
+// ── SWIPE LEFT ON TASKS ────────────────────────────────────
+function initSwipe(el, taskId){
+  var startX=0, isDragging=false, inner=el.querySelector('.task-swipe-inner');
+  if(!inner)return;
+  el.addEventListener('touchstart',function(e){
+    startX=e.touches[0].clientX; isDragging=true;
+  },{passive:true});
+  el.addEventListener('touchmove',function(e){
+    if(!isDragging)return;
+    var dx=e.touches[0].clientX-startX;
+    if(dx<0&&dx>-130){inner.style.transform='translateX('+dx+'px)';inner.style.transition='none';}
+  },{passive:true});
+  el.addEventListener('touchend',function(e){
+    isDragging=false;
+    inner.style.transition='';
+    var dx=e.changedTouches[0].clientX-startX;
+    if(dx<-60){inner.classList.add('swiped');}
+    else{inner.style.transform='';inner.classList.remove('swiped');}
+  });
+  // Tap on non-swiped area closes other swipes
+  inner.addEventListener('click',function(){
+    if(inner.classList.contains('swiped')){inner.classList.remove('swiped');inner.style.transform='';}
+  });
+}
+
+function closeAllSwipes(){
+  document.querySelectorAll('.task-swipe-inner.swiped').forEach(function(el){
+    el.classList.remove('swiped');el.style.transform='';
+  });
+}
+
+// ── QUICK ADD ──────────────────────────────────────────────
+function openQuickAdd(){
+  var drawer=document.getElementById('qaDrawer');
+  var overlay=document.getElementById('qaOverlay');
+  var bktSel=document.getElementById('qaBkt');
+  if(bktSel&&D){bktSel.innerHTML=D.buckets.map(function(b){return '<option value="'+b.id+'">'+b.icon+' '+b.label+'</option>';}).join('');}
+  if(drawer)drawer.classList.add('open');
+  if(overlay)overlay.classList.add('show');
+  vibrate([10]);
+  setTimeout(function(){var i=document.getElementById('qaInput');if(i)i.focus();},300);
+}
+
+function closeQuickAdd(){
+  var drawer=document.getElementById('qaDrawer');
+  var overlay=document.getElementById('qaOverlay');
+  if(drawer)drawer.classList.remove('open');
+  if(overlay)overlay.classList.remove('show');
+  var i=document.getElementById('qaInput');if(i)i.value='';
+}
+
+function submitQuickAdd(){
+  var txt=document.getElementById('qaInput');
+  var bkt=document.getElementById('qaBkt');
+  var pri=document.getElementById('qaPri');
+  if(!txt||!txt.value.trim())return;
+  D.tasks.push({id:Date.now(),text:txt.value.trim(),bucket:bkt?bkt.value:(D.buckets[0]||{id:'cafe'}).id,priority:pri?pri.value:'P2',done:false,created:Date.now(),owner:currentUser});
+  vibrate([20,10,20]);
+  closeQuickAdd();
+  saveData();renderBoard();renderSidebarStats();populateSidebar();
+}
+
+// ── FAB VISIBILITY ─────────────────────────────────────────
+
+// ── HAPTICS ────────────────────────────────────────────────
+
+// ── CONFETTI ───────────────────────────────────────────────
+
+// ── STREAK ─────────────────────────────────────────────────
+
+// ── OFFLINE ────────────────────────────────────────────────
+
+// ── CHAT PANEL ─────────────────────────────────────────────
+
+
+
+
+
+
+// ── GREETING ───────────────────────────────────────────────
+
+// ── TOOLBAR ────────────────────────────────────────────────
+
+// ── COLLAPSIBLE SECTIONS ───────────────────────────────────
+
+
+// ── SWIPE TASK ROW ─────────────────────────────────────────
 function tSwipeRowHTML(t,isDone){
   var b=D.buckets.find(function(b){return b.id===t.bucket;})||{icon:'&#8226;',label:t.bucket,color:'#C4A882'};
   var m=PRI_META[t.priority]||PRI_META['P2'];
+  // Owner border class (Pillar 4: Couple identity)
   var ownerCls=t.owner==='nimish'?'owner-nimish':t.owner==='priyanka'?'owner-priyanka':t.owner==='guest'?'owner-guest':t.owner==='joint'?'owner-joint':'owner-none';
-  var txtColor=isDone?'#C4A882':'#1C0F06';
-  var txtStyle='font-size:14px;font-weight:600;color:'+txtColor+';line-height:1.4;'+(isDone?'text-decoration:line-through;':'');
-  var syncBadge=t.fromSync?'<span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px;background:#FFF4EE;color:#FF6B35;flex-shrink:0;">&#8617;</span>':'';
+  // Text classes
+  var txtCls=isDone?'task-txt-done':'task-txt-main';
+  // Sync badge
+  var syncBadge=t.fromSync?'<span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px;background:#FFF4EE;color:#FF6B35;flex-shrink:0">&#8617; Sync</span>':'';
+  // Inner card content
   var inner='<div class="task-swipe-inner '+ownerCls+'">'
     +'<input class="task-chk" type="checkbox" '+(isDone?'checked':'')+' onchange="toggleTask('+t.id+')" />'
-    +'<span style="font-size:18px;flex-shrink:0;">'+b.icon+'</span>'
-    +'<div style="flex:1;min-width:0;">'
-      +'<div style="'+txtStyle+'">'+esc(t.text)+'</div>'
-      +'<div style="display:flex;align-items:center;gap:5px;margin-top:4px;">'
-        +'<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:12px;background:'+b.color+'18;color:'+b.color+';">'+b.label+'</span>'
+    +'<span class="task-icon-main">'+b.icon+'</span>'
+    +'<div style="flex:1;min-width:0">'
+      +'<div class="'+txtCls+'">'+esc(t.text)+'</div>'
+      +'<div class="task-meta">'
+        +'<span class="task-bkt-lbl" style="background:'+b.color+'15;color:'+b.color+'">'+b.label+'</span>'
         +syncBadge
       +'</div>'
     +'</div>'
-    +'<span style="font-size:9px;font-weight:800;padding:2px 7px;border-radius:12px;background:'+m.color+'18;color:'+m.color+';flex-shrink:0;letter-spacing:.3px;">'+t.priority+'</span>'
+    +'<span class="task-pri-chip" style="background:'+m.color+'15;color:'+m.color+'">'+t.priority+'</span>'
     +'</div>';
+  // Swipe actions
   var actions='<div class="task-swipe-actions">'
     +'<button class="swipe-action-edit" onclick="closeAllSwipes();startEdit('+t.id+')">&#9998; Edit</button>'
     +'<button class="swipe-action-del" onclick="closeAllSwipes();deleteTask('+t.id+')">&#10005; Del</button>'
@@ -1784,4 +1790,104 @@ function tSwipeRowHTML(t,isDone){
   return '<div class="task-swipe-wrap" id="tswipe-'+t.id+'">'
     +actions+inner+'</div>';
 }
->
+
+// ── EMPTY STATES ───────────────────────────────────────────
+var ESTATES={
+  noTasks:'<div style="text-align:center;padding:48px 24px;animation:fadeIn .4s ease"><div style="font-size:52px;margin-bottom:12px">&#9999;&#65039;</div><div style="font-family:Fredoka,sans-serif;font-size:20px;font-weight:700;color:var(--tx);margin-bottom:6px">Nothing here yet</div><div style="font-size:13px;color:var(--mu);line-height:1.6;max-width:260px;margin:0 auto">Tap &quot;+ Task&quot; or the orange + button to start.</div></div>',
+  allDone:'<div style="text-align:center;padding:48px 24px;animation:fadeIn .4s ease"><div style="font-size:56px;margin-bottom:12px">&#127881;</div><div style="font-family:Fredoka,sans-serif;font-size:22px;font-weight:700;color:var(--tx);margin-bottom:8px">Board cleared!</div><div style="font-size:13px;color:var(--mu);line-height:1.6;max-width:280px;margin:0 auto">Every task done. You manage a cafe, a career, a family, and yourself. Truly extraordinary.</div></div>',
+  filtered:'<div style="text-align:center;padding:40px 24px"><div style="font-size:48px;margin-bottom:10px">&#128269;</div><div style="font-family:Fredoka,sans-serif;font-size:18px;font-weight:700;color:var(--tx);margin-bottom:6px">No matches</div><div style="font-size:13px;color:var(--mu);margin-bottom:14px">Try clearing your filters</div><button class="btn btn-sm btn-sec" onclick="clearFilters()" style="border-radius:50px">Clear Filters</button></div>',
+};
+
+// ── USER SWITCH ────────────────────────────────────────────
+
+
+
+// ── GUEST DATA ─────────────────────────────────────────────
+var GUEST_TASKS=[
+  {id:101,text:'Review cafe monthly P&L',bucket:'cafe',priority:'P1',done:false,created:Date.now()-172800000,owner:'guest'},
+  {id:102,text:'Plan weekend family outing',bucket:'family',priority:'P2',done:false,created:Date.now()-86400000,owner:'guest'},
+  {id:103,text:'30 min morning run',bucket:'health',priority:'P2',done:true,created:Date.now()-7200000,owner:'guest'},
+  {id:104,text:'Read AI paper on LLMs',bucket:'devp',priority:'P3',done:false,created:Date.now()-259200000,owner:'guest'},
+  {id:105,text:'Pay quarterly taxes',bucket:'finance',priority:'P1',done:false,created:Date.now()-345600000,owner:'guest'},
+  {id:106,text:'Book son pediatrician',bucket:'family',priority:'P1',done:false,created:Date.now()-86400000,owner:'guest'},
+];
+
+// ── buildWsActForm ──────────────────────────────────────────
+
+// ── wsColHTML ───────────────────────────────────────────────
+
+
+
+function applyEmotionMode(){
+  var h=new Date().getHours();
+  document.body.classList.remove('morning-mode','afternoon-mode','evening-mode');
+  if(h>=5&&h<12)document.body.classList.add('morning-mode');
+  else if(h>=12&&h<18)document.body.classList.add('afternoon-mode');
+  else document.body.classList.add('evening-mode');
+}
+
+var _winsShown=false;
+
+function checkWeeklyWins(){
+  if(_winsShown)return;
+  var today=new Date().toISOString().split('T')[0];
+  var lastWins=localStorage.getItem('lcc-wins-shown');
+  // Show on Monday or first open of the week
+  var dayOfWeek=new Date().getDay();
+  if(dayOfWeek!==1)return; // Only Monday
+  if(lastWins===today)return;
+  if(!D||!D.tasks)return;
+  // Count last week's completed tasks
+  var weekAgo=Date.now()-7*86400000;
+  var done=D.tasks.filter(function(t){return t.done&&(!t.owner||t.owner===currentUser);}).length;
+  var total=D.tasks.filter(function(t){return !t.owner||t.owner===currentUser;}).length;
+  var streak=getStreakData().count;
+  if(done===0&&streak<2)return; // Nothing to celebrate
+  _winsShown=true;
+  localStorage.setItem('lcc-wins-shown',today);
+  showWinsPopup(done,total,streak);
+}
+
+function showWinsPopup(done,total,streak){
+  var msgs=[
+    'You showed up this week. That already makes you extraordinary.',
+    'A cafe, a career, a toddler, and still crushing tasks. Respect.',
+    'Small wins compound. You two are building something beautiful.',
+    'Progress over perfection. You nailed it this week.',
+  ];
+  var msg=msgs[Math.floor(Math.random()*msgs.length)];
+  var el=document.createElement('div');
+  el.className='wins-popup';el.id='winsPopup';
+  el.innerHTML='<div class="wins-popup-card">'
+    +'<div class="wins-popup-emoji">&#127881;</div>'
+    +'<div class="wins-popup-title">Weekly Wins!</div>'
+    +'<div class="wins-popup-sub">'+msg+'</div>'
+    +'<div class="wins-popup-stats">'
+      +'<div class="wins-popup-stat"><div class="wins-popup-stat-n">'+done+'</div><div class="wins-popup-stat-l">DONE</div></div>'
+      +'<div class="wins-popup-stat"><div class="wins-popup-stat-n">'+streak+'</div><div class="wins-popup-stat-l">STREAK</div></div>'
+      +'<div class="wins-popup-stat"><div class="wins-popup-stat-n">'+total+'</div><div class="wins-popup-stat-l">TOTAL</div></div>'
+    +'</div>'
+    +'<button class="wins-popup-close" onclick="closeWinsPopup()">Keep it up! &#127775;</button>'
+    +'</div>';
+  document.body.appendChild(el);
+  // Confetti burst
+  setTimeout(function(){spawnConfetti(window.innerWidth/2,window.innerHeight/3);},300);
+  setTimeout(function(){spawnConfetti(window.innerWidth/3,window.innerHeight/2);},500);
+  setTimeout(function(){spawnConfetti(2*window.innerWidth/3,window.innerHeight/2);},700);
+}
+
+function closeWinsPopup(){
+  var el=document.getElementById('winsPopup');
+  if(el){el.style.animation='fadeOut .3s ease forwards';setTimeout(function(){el.remove();},300);}
+}
+
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+window.addEventListener('load',()=>{
+  if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});
+  checkAuth();
+});
+window.onerror=function(msg,src,line){console.error('JS Error:',msg,'line:',line);const el=document.getElementById('loading');if(el&&el.style.display!=='none')el.innerHTML='<div style="padding:30px;color:#EF4444;font-family:sans-serif"><strong>Error:</strong> '+msg+' (line '+line+')<br><br>Please refresh (Ctrl+Shift+R)</div>';return false;};
+</script>
+</body>
+</html>
