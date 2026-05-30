@@ -385,9 +385,10 @@ body.evening-mode{background:#FEF6EC;}
     </div>
     <input class="lock-in" id="lockIn" type="password" maxlength="20" placeholder="••••••" onkeydown="if(event.key==='Enter')checkPin()"/>
     <div class="lock-err" id="lockErr"></div>
-    <button class="lock-btn" id="lockBtn" onclick="checkPin()" style="background:#4F46E5">Unlock →</button>
+    <button class="lock-btn" id="lockBtn" onclick="checkPin()" style="background:#FF6B35">Unlock →</button>
     <label class="lock-remember"><input type="checkbox" id="lockRem" checked/> Remember me for 7 days</label>
     <button class="lock-setpw" onclick="showSetPin()">Set / Change PIN</button>
+    <button id="whoGuest" onclick="selectWho('guest')" style="margin-top:8px;width:100%;padding:10px;border:1.5px dashed #C4A882;border-radius:12px;background:transparent;color:#8B6B50;font-size:13px;font-weight:700;cursor:pointer;font-family:Nunito,sans-serif;">&#128100; Try as Guest (Demo)</button>
   </div>
 </div>
 <div class="lock-screen" id="setPinScreen" style="display:none">
@@ -1416,10 +1417,4 @@ function wsAddItem(bkt,who){
   inp.value='';wsHideForm(bkt,who);saveWs();renderWsView();
 }
 function wsAddAction(bkt){
-  var inp=el('wsActIn-'+bkt);if(!inp)return;
-  var txt=inp.value.trim();if(!txt)return;
-  var ownerEl=el('wsActOwner-'+bkt);
-  var owner=ownerEl?ownerEl.value:'nimish';
-  var week=wsData.weeks[wsCurrentWeek];if(!week)return;
-  if(!week.actions)week.actions=[];
-  week.actions.push({id:String(Date.now()),text:txt,o
+  var inp=el
