@@ -1577,19 +1577,28 @@ async function callAI(prompt,history){
 }
 
 // Startup
+
 (function(){
-  var sp=el('splash');if(sp)sp.style.display='flex';
+  var sp=el('splash');
+  if(sp)sp.style.display='flex';
   try{
     var session=checkSession();
-    if(session){currentUser=session;bootApp();}
-    else{if(sp)setTimeout(function(){sp.style.display='none';var ls=el('lockScreen');if(ls)ls.style.display='flex';selectWho('nimish');},1200);}
+    if(session){
+      currentUser=session;
+      bootApp();
+    } else {
+      setTimeout(function(){
+        var sp2=el('splash');if(sp2)sp2.style.display='none';
+        var ls=el('lockScreen');if(ls)ls.style.display='flex';
+        selectWho('nimish');
+      },1200);
+    }
   }catch(ex){
-    var ls=el('lockScreen');if(ls)ls.style.display='flex';
-    if(sp)sp.style.display='none';
+    var sp3=el('splash');if(sp3)sp3.style.display='none';
+    var ls2=el('lockScreen');if(ls2)ls2.style.display='flex';
     selectWho('nimish');
   }
 })();
-
 </script>
 
 <div id="qaOverlay" onclick="closeQuickAdd()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:400;"></div>
