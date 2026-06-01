@@ -84,7 +84,7 @@ button{cursor:pointer;}
 .focus-item{display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid #BFDBFE;font-size:13px;}
 .focus-item:last-child{border-bottom:none;}
 .add-form{background:var(--al);border:1px solid var(--ab);border-radius:14px;padding:16px;margin-bottom:14px;animation:fadeIn .2s ease;}
-.add-form input,.add-form select{background:var(--sf);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--tx);outline:none;width:100%;}
+.add-form input,.add-form select{background:var(--sf2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--tx);outline:none;width:100%;}
 .add-form input:focus{border-color:var(--ac);}
 .form-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
 .form-row select{flex:1;min-width:100px;}
@@ -156,7 +156,7 @@ button{cursor:pointer;}
 .ws-hist-item{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:14px 16px;margin-bottom:8px;cursor:pointer;transition:all .15s;}
 .ws-hist-item:hover{box-shadow:0 3px 12px rgba(0,0,0,.08);}
 .ws-hist-week{font-size:12px;font-weight:700;color:var(--tx);}
-.ws-hist-dates{font-size:11px;color:var(--mu);margin-top:2px;}
+.ws-hist-dates覆{font-size:11px;color:var(--mu);margin-top:2px;}
 .ws-hist-stats{display:flex;gap:10px;margin-top:8px;}
 .ws-hist-stat{font-size:11px;color:var(--mu);}
 .ws-hist-stat span{font-weight:700;color:var(--tx);}
@@ -340,12 +340,12 @@ button{cursor:pointer;}
     <div class="sb-nav">
       <button class="nav-btn active" onclick="nav('board')" id="nb-board"><span class="nav-ic">&#9638;</span>Board</button>
       <button class="nav-btn" onclick="nav('ritual')" id="nb-ritual"><span class="nav-ic">&#9678;</span><span id="ritualLbl">&#127749; Ritual</span></button>
-      <button class="nav-btn" onclick="nav('sync')" id="nb-sync"><span class="nav-ic">&#128145;</span>Weekly Sync</button>
+      <button class="nav-btn" onclick="nav('ws')" id="nb-sync"><span class="nav-ic">&#128145;</span>Weekly Sync</button>
       <button class="nav-btn" onclick="nav('insights')" id="nb-insights"><span class="nav-ic">&#9672;</span>Insights</button>
       <button class="nav-btn" onclick="nav('chat')" id="nb-chat"><span class="nav-ic">&#9673;</span>Chat</button>
       <button class="nav-btn" onclick="nav('config')" id="nb-config"><span class="nav-ic">&#8862;</span>Settings</button>
       <div class="sb-section">
-        <div class="sb-sec-lbl">MY BUCKETS</div>
+        <div class="sb-section-lbl">MY BUCKETS</div>
         <div id="sbBuckets"></div>
       </div>
     </div>
@@ -452,7 +452,7 @@ button{cursor:pointer;}
         <button class="btn btn-primary" id="eBtn" onclick="runEvening()" style="width:100%">&#127769; Generate Evening Review</button>
       </div>
     </div>
-    <div class="view" id="view-sync">
+    <div class="view" id="view-ws">
       <div class="ws-header">
         <div>
           <div style="font-size:22px;font-weight:800;letter-spacing:-.5px;">&#128145; Weekly Sync</div>
@@ -557,7 +557,7 @@ button{cursor:pointer;}
 <div class="mob-nav" id="mobNav" style="display:none;">
   <button class="mob-btn active" id="mb-board" onclick="nav('board')"><span class="mob-ic">&#9638;</span>Board</button>
   <button class="mob-btn" id="mb-ritual" onclick="nav('ritual')"><span class="mob-ic">&#9678;</span>Ritual</button>
-  <button class="mob-btn" id="mb-sync" onclick="nav('sync')"><span class="mob-ic">&#128145;</span>Sync</button>
+  <button class="mob-btn" id="mb-sync" onclick="nav('ws')"><span class="mob-ic">&#128145;</span>Sync</button>
   <button class="mob-btn" id="mb-insights" onclick="nav('insights')"><span class="mob-ic">&#9672;</span>Insights</button>
   <button class="mob-btn" id="mb-chat" onclick="nav('chat')"><span class="mob-ic">&#9673;</span>Chat</button>
   <button class="mob-btn" id="mb-config" onclick="nav('config')"><span class="mob-ic">&#8862;</span>Settings</button>
@@ -581,9 +581,6 @@ const SKINS=[{id:'cosmos',name:'Cosmos',tag:'\uD83C\uDF0C Deep & Mysterious',sb:
 const LAYOUTS=[{id:'clean',name:'Clean List',desc:'Polished rows \u2014 perfect balance',icon:'\u2728'},{id:'compact',name:'Compact List',desc:'Dense rows \u2014 see more at once',icon:'\uD83D\uDCCB'},{id:'kanban',name:'Kanban Grid',desc:'2-column grid by bucket',icon:'\uD83D\uDCCA'},{id:'timeline',name:'Timeline',desc:'Grouped by Today / This Week',icon:'\uD83D\uDCC5'}];
 const SKIN_KEY='lcc-skins';
 const LAYOUT_KEY='lcc-layouts';
-
-// Life Command Centre  Complete JS
-// (c) 2026 Dr. Nimish Pankhedkar. All rights reserved.
 
 // State
 var D=null, wsData={weeks:{}}, currentUser='nimish', editingTaskId=null;
@@ -1074,12 +1071,19 @@ function nav(v){
   document.querySelectorAll('.view').forEach(function(e){e.classList.remove('active');});
   document.querySelectorAll('.nav-btn,.mob-btn').forEach(function(b){b.classList.remove('active');});
   var vEl=el('view-'+v);if(vEl)vEl.classList.add('active');
-  document.querySelectorAll('[data-nav="'+v+'"]').forEach(function(b){b.classList.add('active');});
+  
+  // Set active visual highlights safely on buttons matching data-nav markers or explicit id tags
+  var sideBtn=el('nb-'+v)||el('nb-sync');
+  var mobBtn=el('mb-'+v);
+  if(sideBtn && v === 'ws') sideBtn = el('nb-sync'); // Safety remapping for weekly sync custom ID tag
+  if(sideBtn) sideBtn.classList.add('active');
+  if(mobBtn) mobBtn.classList.add('active');
+  
   if(v==='board')renderBoard();
   else if(v==='ritual')renderEveningDone();
   else if(v==='ws')renderWsView();
   else if(v==='insights')renderInsights();
-  else if(v==='settings')populateSettings();
+  else if(v==='config')populateSettings();
 }
 function initDate(){
   var days=['SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY'];
@@ -1411,7 +1415,7 @@ function populateSettings(){
 }
 function saveSettings(){var sn=el('setName');if(sn&&sn.value.trim())D.settings.name=sn.value.trim();saveData();alert('Settings saved!');}
 function updateBucket(id,key,val){var b=D.buckets.find(function(bk){return bk.id===id;});if(b)b[key]=val;saveData();populateSidebar();}
-function addBucket(){D.buckets.push({id:'bkt'+Date.now(),label:'New Bucket',icon:'&#128230;',color:'#6366F1'});saveData();populateSettings();populateSidebar();}
+function addBucket(){D.buckets.push({id:'bkt'+Date.now(),label:'New Bucket',icon:'&#128230;',color:#6366F1'});saveData();populateSettings();populateSidebar();}
 
 // Auth
 function selectWho(who){
@@ -1487,9 +1491,6 @@ function bootApp(){
   sbLoad();applyEmotionMode();setTimeout(checkWeeklyWins,2000);
   initOffline();initFabScroll();
   if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch(function(){});
-
-  // FIX: splash screen was never hidden after successful boot
-  showApp();
 }
 function showApp(){
   var sp=el('splash');if(sp)sp.style.display='none';
@@ -1579,9 +1580,8 @@ async function callAI(prompt,history){
   return data.text||data.content||'';
 }
 
-// Startup
-
-(function(){
+// Startup Safe Initialization
+document.addEventListener("DOMContentLoaded", function() {
   var sp=el('splash');
   if(sp)sp.style.display='flex';
   try{
@@ -1601,7 +1601,7 @@ async function callAI(prompt,history){
     var ls2=el('lockScreen');if(ls2)ls2.style.display='flex';
     selectWho('nimish');
   }
-})();
+});
 </script>
 
 <div id="qaOverlay" onclick="closeQuickAdd()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:400;"></div>
