@@ -1487,6 +1487,9 @@ function bootApp(){
   sbLoad();applyEmotionMode();setTimeout(checkWeeklyWins,2000);
   initOffline();initFabScroll();
   if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch(function(){});
+
+  // FIX: splash screen was never hidden after successful boot
+  showApp();
 }
 function showApp(){
   var sp=el('splash');if(sp)sp.style.display='none';
