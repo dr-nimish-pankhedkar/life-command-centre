@@ -1648,65 +1648,26 @@ function selectWho(who){
 async function checkPin(){
   if(currentUser==='guest'){bootGuest();return;}
   var inp=el('lockIn');if(!inp)return;
+  var le=el('lockErr');
   var pin=inp.value.trim();
-  var le=el('lockErr');var lb=el('lockBtn');
   if(!pin){if(le)le.textContent='Enter your PIN';return;}
   if(le)le.textContent='';
-
-  // Step 1: Check localStorage immediately (no network, instant)
   var pinData=null;
-  try{pinData=JSON.parse(localStorage.getItem(PW_KEY)||'null');}catch(e){}
-  if(pinData&&pinData[currentUser]&&String(pin)===String(pinData[currentUser])){
-    saveSession(currentUser);
-    showApp();
-    bootApp();
-    return;
-  }
-
-  // Step 2: Try Supabase (with visible feedback)
-  if(lb){lb.textContent='Checking...';lb.disabled=true;}
-  var fetched=false;
   try{
-    var ctrl=null;
-    var fetchPromise=fetch(SB_URL+'/rest/v1/lcc_pins?id=eq.master&select=pins',{
+    var res=await fetch(SB_URL+'/rest/v1/lcc_pins?id=eq.master&select=pins',{
       headers:{apikey:SB_ANON,Authorization:'Bearer '+SB_ANON}
     });
-    var timeoutPromise=new Promise(function(res){setTimeout(function(){res(null);},5000);});
-    var result=await Promise.race([fetchPromise,timeoutPromise]);
-    if(result&&result.ok){
-      var arr=await result.json();
-      if(arr&&arr[0]&&arr[0].pins){
-        pinData=arr[0].pins;
-        fetched=true;
-        try{localStorage.setItem(PW_KEY,JSON.stringify(pinData));}catch(ex){}
-      }
-    }
-  }catch(ex){if(le)le.textContent='Network error. Check connection.';}
-  if(lb){lb.textContent='Unlock →';lb.disabled=false;}
-
-  if(!pinData){
-    if(le)le.textContent='Could not verify PIN. Check connection.';
-    return;
-  }
-  var expected=pinData[currentUser];
+    if(res.ok){var arr=await res.json();if(arr&&arr[0])pinData=arr[0].pins;}
+  }catch(e){}
+  if(!pinData){try{pinData=JSON.parse(localStorage.getItem(PW_KEY)||'null');}catch(e){}}
+  var expected=pinData&&pinData[currentUser];
   if(!expected){
-    // No PIN set for this user
-    if(pin.length>=4){
-      await setNewPin(currentUser,pin);
-      saveSession(currentUser);
-      showApp();
-      bootApp();
-    } else {
-      if(le)le.textContent='Enter 4+ digits to set your PIN';
-    }
-    return;
+    if(le)le.textContent='No PIN found. Use Set / Change PIN below.';return;
   }
   if(String(pin)===String(expected)){
-    saveSession(currentUser);
-    showApp();
-    bootApp();
-  } else {
-    if(le)le.textContent='Wrong PIN';
+    saveSession(currentUser);showApp();bootApp();
+  }else{
+    var le=el('lockErr');if(le)le.textContent='Wrong PIN. Try again.';
     if(inp){inp.value='';inp.focus();}
   }
 }
@@ -1727,7 +1688,7 @@ async function confirmSetPin(){
   if(p1.value.length<4){if(pe)pe.textContent='PIN must be 4+ digits';return;}
   if(p1.value!==p2.value){if(pe)pe.textContent='PINs do not match';return;}
   await setNewPin(currentUser,p1.value);
-  cancelSetPin();bootApp();
+  cancelSetPin();saveSession(currentUser);showApp();bootApp();
 }
 
 function bootGuest(){
@@ -1933,6 +1894,7 @@ function initSwipesAll(){
 <button id="fabAdd" onclick="openQuickAdd()" style="position:fixed;bottom:80px;right:76px;z-index:300;width:52px;height:52px;border-radius:50%;border:none;background:linear-gradient(135deg,#FF6B35,#FF8C42);box-shadow:0 4px 20px rgba(255,107,53,.4);cursor:pointer;color:#fff;font-size:26px;font-weight:300;line-height:1;display:flex;align-items:center;justify-content:center;">&#43;</button>
 
 <!-- Copyright footer -->
-<div style="display:none" id="copyrightFooter">&copy; 2026 Dr. Nimish Pankhedkar. All rights reserved.</div>
+
+<div style="text-align:center;padding:16px;font-size:10px;color:#C4A882;font-family:Nunito,sans-serif;">&copy; 2026 Dr. Nimish Pankhedkar. All rights reserved.</div>
 </body>
 </html>
