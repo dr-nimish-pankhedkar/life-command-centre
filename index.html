@@ -156,7 +156,7 @@ button{cursor:pointer;}
 .ws-hist-item{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:14px 16px;margin-bottom:8px;cursor:pointer;transition:all .15s;}
 .ws-hist-item:hover{box-shadow:0 3px 12px rgba(0,0,0,.08);}
 .ws-hist-week{font-size:12px;font-weight:700;color:var(--tx);}
-.ws-hist-dates覆{font-size:11px;color:var(--mu);margin-top:2px;}
+.ws-hist-dates{font-size:11px;color:var(--mu);margin-top:2px;}
 .ws-hist-stats{display:flex;gap:10px;margin-top:8px;}
 .ws-hist-stat{font-size:11px;color:var(--mu);}
 .ws-hist-stat span{font-weight:700;color:var(--tx);}
@@ -345,7 +345,7 @@ button{cursor:pointer;}
       <button class="nav-btn" onclick="nav('chat')" id="nb-chat"><span class="nav-ic">&#9673;</span>Chat</button>
       <button class="nav-btn" onclick="nav('config')" id="nb-config"><span class="nav-ic">&#8862;</span>Settings</button>
       <div class="sb-section">
-        <div class="sb-section-lbl">MY BUCKETS</div>
+        <div class="sb-sec-lbl">MY BUCKETS</div>
         <div id="sbBuckets"></div>
       </div>
     </div>
@@ -1415,7 +1415,7 @@ function populateSettings(){
 }
 function saveSettings(){var sn=el('setName');if(sn&&sn.value.trim())D.settings.name=sn.value.trim();saveData();alert('Settings saved!');}
 function updateBucket(id,key,val){var b=D.buckets.find(function(bk){return bk.id===id;});if(b)b[key]=val;saveData();populateSidebar();}
-function addBucket(){D.buckets.push({id:'bkt'+Date.now(),label:'New Bucket',icon:'&#128230;',color:#6366F1'});saveData();populateSettings();populateSidebar();}
+function addBucket(){D.buckets.push({id:'bkt'+Date.now(),label:'New Bucket',icon:'&#128230;',color:'#6366F1'});saveData();populateSettings();populateSidebar();}
 
 // Auth
 function selectWho(who){
@@ -1588,6 +1588,7 @@ document.addEventListener("DOMContentLoaded", function() {
     var session=checkSession();
     if(session){
       currentUser=session;
+      showApp(); // IMPORTANT FIX: This hides the splash screen!
       bootApp();
     } else {
       setTimeout(function(){
@@ -1597,6 +1598,7 @@ document.addEventListener("DOMContentLoaded", function() {
       },1200);
     }
   }catch(ex){
+    console.error("Startup failed:", ex);
     var sp3=el('splash');if(sp3)sp3.style.display='none';
     var ls2=el('lockScreen');if(ls2)ls2.style.display='flex';
     selectWho('nimish');
