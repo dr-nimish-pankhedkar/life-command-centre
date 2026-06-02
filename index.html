@@ -307,9 +307,9 @@ button{cursor:pointer;}
     <div class="lock-title" id="setPinTitle">Set Your PIN</div>
     <div class="lock-sub" id="setPinSub">Min 4 characters. Saved securely to cloud.</div>
     <input class="lock-in" id="pin1" type="password" maxlength="20" placeholder="New PIN" onkeydown="if(event.key==='Enter')document.getElementById('pin2').focus()"/>
-    <input class="lock-in" id="pin2" type="password" maxlength="20" placeholder="Confirm PIN" style="margin-top:8px" onkeydown="if(event.key==='Enter')savePin()"/>
+    <input class="lock-in" id="pin2" type="password" maxlength="20" placeholder="Confirm PIN" style="margin-top:8px" onkeydown="if(event.key==='Enter')confirmSetPin()"/>
     <div class="lock-err" id="setPinErr"></div>
-    <button class="lock-btn" onclick="savePin()" style="background:#4F46E5">Save PIN →</button>
+    <button class="lock-btn" onclick="confirmSetPin()" style="background:#4F46E5">Save PIN →</button>
     <button class="lock-setpw" onclick="cancelSetPin()">Cancel</button>
   </div>
 </div>
@@ -380,7 +380,7 @@ button{cursor:pointer;}
       </div>
       <div id="addForm" style="display:none" class="add-form">
         <div class="slabel" style="color:var(--ac)">NEW TASK</div>
-        <input type="text" id="newTxt" placeholder="What needs to get done?" onkeydown="if(event.key==='Enter')addTask()"/>
+        <input type="text" id="newTxt" placeholder="What needs to get done?" onkeydown="if(event.key==='Enter')submitAdd()"/>
         <div class="form-row">
           <select id="newBkt"></select>
           <select id="newPri">
@@ -388,7 +388,7 @@ button{cursor:pointer;}
             <option value="P2" selected>P2 &#8212; Important</option>
             <option value="P3">P3 &#8212; Someday</option>
           </select>
-          <button class="btn btn-primary btn-sm" onclick="addTask()">Save</button>
+          <button class="btn btn-primary btn-sm" onclick="submitAdd()">Save</button>
           <button class="btn btn-sec btn-sm" onclick="closeAdd()">Cancel</button>
         <input type="date" id="newTarget" style="margin-top:6px;width:100%;padding:8px 12px;border:1px solid var(--bd);border-radius:8px;font-size:13px;color:var(--tx);background:var(--sf);outline:none;" placeholder="Target date (optional)">
         </div>
@@ -467,7 +467,7 @@ button{cursor:pointer;}
             <button class="ws-nav-btn" onclick="wsNavWeek(1)">&#8250;</button>
           </div>
           <button class="btn btn-sm" id="wsAgendaBtn" onclick="wsGenAgenda()" style="background:#F5F3FF;color:var(--p);border:1px solid #DDD6FE">&#10024; Agenda</button>
-          <button class="btn btn-sm btn-primary" id="wsCloseBtn" onclick="wsCloseWeek()">&#10003; Close Week</button>
+          <button class="btn btn-sm btn-primary" id="wsCloseBtn" onclick="closeWeek()">&#10003; Close Week</button>
           <button class="btn btn-sm btn-sec" onclick="wsShowHistory()">&#128197; History</button>
         </div>
       </div>
@@ -556,7 +556,7 @@ button{cursor:pointer;}
     </div>
   </div>
 </div>
-<div class="mob-nav" id="mobNav" style="display:none;" style="display:none;">
+<div class="mob-nav" id="mobNav" style="display:none;">
   <button class="mob-btn active" id="mb-board" onclick="nav('board')"><span class="mob-ic">&#9638;</span>Board</button>
   <button class="mob-btn" id="mb-ritual" onclick="nav('ritual')"><span class="mob-ic">&#9678;</span>Ritual</button>
   <button class="mob-btn" id="mb-sync" onclick="nav('ws')"><span class="mob-ic">&#128145;</span>Sync</button>
@@ -1111,8 +1111,8 @@ function renderSidebarStats() {
   var pending = D ? D.tasks.filter(function(t) { return !t.done&&(!t.owner||t.owner===currentUser); }).length : 0;
   var urgent = D ? D.tasks.filter(function(t) { return !t.done&&t.priority==='P1'&&(!t.owner||t.owner===currentUser); }).length : 0;
   var done = D ? D.tasks.filter(function(t) { return t.done&&(!t.owner||t.owner===currentUser); }).length : 0;
-  var sU = el('stU'); if (sU) sU.textContent = pending;
-  var sP = el('stP'); if (sP) sP.textContent = urgent;
+  var sP = el('stP'); if (sP) sP.textContent = pending;
+  var sU = el('stU'); if (sU) sU.textContent = urgent;
   var sD = el('stD'); if (sD) sD.textContent = done;
 }
 function populateSidebar() {
@@ -1164,18 +1164,20 @@ function applyLayout(layoutId) {
 function renderSkinGrid() {
   var ge = el('skinGrid'); if (!ge) return; var mySkin = getUserSkin();
   ge.innerHTML = SKINS.map(function(s) {
-    return '<div class="skin-card' + (s.id===mySkin?' active':'') + '" data-sid="' + s.id + '" onclick="setSkin(this.dataset.sid)" style="background:' + s.bg + ';border-color:' + (s.id===mySkin?s.accent:'transparent') + ';">'
-      + '<div style="background:' + s.sidebar + ';height:32px;border-radius:6px 6px 0 0;"></div>'
-      + '<div style="padding:6px 8px;font-size:10px;font-weight:700;color:' + s.text + ';">' + s.name + '</div>'
+    return '<div class="skin-opt' + (s.id===mySkin?' active':'') + '" data-sid="' + s.id + '" onclick="setSkin(this.dataset.sid)">'
+      + '<div class="skin-preview"><div class="skin-preview-sb" style="background:' + s.sb + ';"></div>'
+      + '<div class="skin-preview-main"><div class="skin-preview-bar" style="background:' + s.accent + ';width:70%;"></div>'
+      + '<div class="skin-preview-bar" style="background:#E5E7EB;width:50%;"></div></div></div>'
+      + '<div class="skin-meta"><div class="skin-name">' + s.name + '</div><div class="skin-tag">' + s.tag + '</div></div>'
       + '</div>';
   }).join('');
 }
 function renderLayoutGrid() {
   var ge = el('layoutGrid'); if (!ge) return; var myLayout = getUserLayout();
   ge.innerHTML = LAYOUTS.map(function(l) {
-    return '<div class="layout-card' + (l.id===myLayout?' active':'') + '" data-lid="' + l.id + '" onclick="setLayout(this.dataset.lid)">'
-      + '<div style="font-size:20px;">' + l.icon + '</div>'
-      + '<div style="font-size:11px;font-weight:700;margin-top:4px;">' + l.name + '</div>'
+    return '<div class="layout-opt' + (l.id===myLayout?' active':'') + '" data-lid="' + l.id + '" onclick="setLayout(this.dataset.lid)">'
+      + '<div class="layout-opt-name">' + l.icon + ' ' + l.name + '</div>'
+      + '<div class="layout-opt-desc">' + l.desc + '</div>'
       + '</div>';
   }).join('');
 }
@@ -1205,7 +1207,7 @@ async function runMorning() {
   btn.disabled = true; btn.textContent = '\u23f3 Generating...';
   var p1s = D.tasks.filter(function(t) { return !t.done&&(!t.owner||t.owner===currentUser)&&t.priority==='P1'; });
   var p = D.tasks.filter(function(t) { return !t.done&&(!t.owner||t.owner===currentUser); }).map(function(t) { return '['+t.priority+'] '+t.text; }).join('\n');
-  var ml = el('mFocusList');
+  var ml = el('mFocus');
   if (ml) {
     ml.innerHTML = p1s.slice(0,3).map(function(t) {
       var b = D.buckets.find(function(bk) { return bk.id===t.bucket; });
@@ -1220,10 +1222,10 @@ async function runMorning() {
   }
   try {
     var res = await callAI('Morning briefing. Tasks:\n' + p + '\nGive 2 sentence energetic motivational message. Plain text only.');
-    var mc = el('mAICard'); if (mc) mc.style.display = 'block';
-    var mt = el('mAIText'); if (mt) mt.textContent = res;
-    btn.textContent = '&#128336; Run Again';
-  } catch(ex) { btn.textContent = '&#9889; Run Morning Ritual'; }
+    var mc = el('mResCard'); if (mc) mc.style.display = 'block';
+    var mt = el('mRes'); if (mt) mt.textContent = res;
+    btn.innerHTML = '&#128336; Run Again';
+  } catch(ex) { btn.innerHTML = '&#9728;&#65039; Generate Morning Briefing'; }
   btn.disabled = false;
 }
 async function runEvening() {
@@ -1233,10 +1235,10 @@ async function runEvening() {
   var p = 'Completed (' + done.length + '): ' + (done.map(function(t) { return '['+t.bucket+'] '+t.text; }).join(', ')||'None');
   try {
     var res = await callAI('Evening reflection. ' + p + '\nGive 2 sentence warm reflective message. Plain text only.');
-    var ec = el('eAICard'); if (ec) ec.style.display = 'block';
-    var et = el('eAIText'); if (et) et.textContent = res;
-    btn.textContent = '&#9889; Reflect Again';
-  } catch(ex) { btn.textContent = '&#9889; Run Evening Ritual'; }
+    var ec = el('eResCard'); if (ec) ec.style.display = 'block';
+    var et = el('eRes'); if (et) et.textContent = res;
+    btn.innerHTML = '&#9889; Reflect Again';
+  } catch(ex) { btn.innerHTML = '&#127769; Generate Evening Review'; }
   btn.disabled = false;
 }
 
@@ -1284,13 +1286,6 @@ function wsColHTML(bucketId, who, items, isClosed) {
       + '</div>'
       + '<button class="ws-add-btn" data-bkt="' + bucketId + '" data-who="' + who + '" onclick="wsShowForm(this.dataset.bkt,this.dataset.who)">+ Add note</button>'
       + '<div class="ws-add-form" id="wsTaskForm-' + bucketId + '-' + who + '" style="display:none;">'
-      + '<input class="ws-add-input" id="wsTaskIn-' + bucketId + '-' + who + '" placeholder="Add as task..."/>'
-      + '<button class="ws-add-save" data-bkt="' + bucketId + '" data-who="' + who + '" onclick="wsAddTask(this.dataset.bkt,this.dataset.who)">Add Task</button>'
-      + '<button class="ws-add-cancel" data-bkt="' + bucketId + '" data-who="' + who + '" onclick="wsHideTaskForm(this.dataset.bkt,this.dataset.who)">&#10005;</button>'
-      + '</div>'
-      + '<button style="font-size:11px;color:#A55EEA;background:none;border:none;cursor:pointer;padding:4px 0;font-family:Nunito,sans-serif;font-weight:700;" data-bkt="' + bucketId + '" data-who="' + who + '" onclick="wsShowTaskForm(this.dataset.bkt,this.dataset.who)">&#128279; Add as Task</button>';
-    // Task input (new feature)
-    html += '<div class="ws-add-form" id="wsTaskForm-' + bucketId + '-' + who + '" style="display:none;">'
       + '<input class="ws-add-input" id="wsTaskIn-' + bucketId + '-' + who + '" placeholder="Add as task..."/>'
       + '<button class="ws-add-save" data-bkt="' + bucketId + '" data-who="' + who + '" onclick="wsAddTask(this.dataset.bkt,this.dataset.who)">Add Task</button>'
       + '<button class="ws-add-cancel" data-bkt="' + bucketId + '" data-who="' + who + '" onclick="wsHideTaskForm(this.dataset.bkt,this.dataset.who)">&#10005;</button>'
@@ -1379,6 +1374,7 @@ function renderWsView() {
   var week = wsData.weeks[wsCurrentWeek]; if (!week) return;
   var isClosed = week.closed || false;
   var items = week.items || {}; var actions = week.actions || [];
+  var wlbl = el('wsWeekLbl'); if (wlbl) wlbl.textContent = wsCurrentWeek;
   var wsub = el('wsWeekSub'); if (wsub) wsub.textContent = (week&&week.dates)||'';
   var wcs = el('wsCloseBtn'); if (wcs) wcs.textContent = isClosed ? '&#128275; Reopen' : '&#128274; Close Week';
   var wbEl = el('wsBuckets'); if (!wbEl) return;
@@ -1520,6 +1516,16 @@ function populateSettings() {
         + '<input class="bkt-ic-in" value="'+b.icon+'" data-bid="'+b.id+'" oninput="updateBucket(this.dataset.bid,\'icon\',this.value)"/>'
         + '<input class="bkt-nm-in" value="'+b.label+'" data-bid="'+b.id+'" oninput="updateBucket(this.dataset.bid,\'label\',this.value)"/>'
         + '<input type="color" class="col-in" value="'+b.color+'" data-bid="'+b.id+'" oninput="updateBucket(this.dataset.bid,\'color\',this.value)"/>'
+        + '</div>';
+    }).join('');
+  }
+  var wsBktEd = el('wsBktEditor');
+  if (wsBktEd) {
+    wsBktEd.innerHTML = D.wsBuckets.map(function(b) {
+      return '<div class="bkt-edit-row">'
+        + '<input class="bkt-ic-in" value="'+b.icon+'" data-bid="'+b.id+'" oninput="updateWsBucket(this.dataset.bid,\'icon\',this.value)"/>'
+        + '<input class="bkt-nm-in" value="'+b.label+'" data-bid="'+b.id+'" oninput="updateWsBucket(this.dataset.bid,\'label\',this.value)"/>'
+        + '<input type="color" class="col-in" value="'+b.color+'" data-bid="'+b.id+'" oninput="updateWsBucket(this.dataset.bid,\'color\',this.value)"/>'
         + '</div>';
     }).join('');
   }
@@ -1710,7 +1716,87 @@ async function callAI(prompt, history) {
   return data.text || data.content || '';
 }
 
-//  STARTUP 
+//  MISSING IMPLEMENTATIONS
+function pickMood(btn, type) {
+  var row = type === 'm' ? el('mMoodRow') : el('eMoodRow');
+  if (row) row.querySelectorAll('.mood-btn').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+  saveMood(type === 'm' ? 'morning' : 'evening', btn.textContent.trim());
+}
+function setRMode(mode) {
+  var rmorn = el('r-morning'); var reve = el('r-evening');
+  var bmorn = el('rMorn'); var beve = el('rEve');
+  if (mode === 'morning') {
+    if (rmorn) rmorn.style.display = 'block';
+    if (reve) reve.style.display = 'none';
+    if (bmorn) bmorn.classList.add('active');
+    if (beve) beve.classList.remove('active');
+  } else {
+    if (rmorn) rmorn.style.display = 'none';
+    if (reve) reve.style.display = 'block';
+    if (bmorn) bmorn.classList.remove('active');
+    if (beve) beve.classList.add('active');
+    renderEveningDone();
+  }
+}
+function updateSetting(key, val) {
+  if (!D || !D.settings) return;
+  D.settings[key] = val;
+  saveData();
+}
+function updateWsBucket(id, key, val) {
+  var b = D.wsBuckets.find(function(bk){return bk.id===id;});
+  if (b) b[key] = val;
+  saveData(); populateSidebar();
+}
+function addWsBucket() {
+  var ic = el('wsNbIc'); var lbl = el('wsNbLbl'); var clr = el('wsNbClr');
+  var label = lbl ? lbl.value.trim() : '';
+  if (!label) return;
+  D.wsBuckets.push({id:'wsb'+Date.now(), label:label, icon:ic?ic.value:'📌', color:clr?clr.value:'#8B5CF6'});
+  if (lbl) lbl.value = '';
+  saveData(); populateSettings();
+}
+function exportData() {
+  var json = JSON.stringify({tasks:D.tasks, buckets:D.buckets, settings:D.settings, moods:D.moods, wsBuckets:D.wsBuckets, wsData:wsData}, null, 2);
+  var a = document.createElement('a');
+  a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(json);
+  a.download = 'lcc-export-' + new Date().toISOString().split('T')[0] + '.json';
+  a.click();
+}
+function clearData() {
+  if (!confirm('Reset all data? This cannot be undone.')) return;
+  localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(WS_STORAGE);
+  D = JSON.parse(JSON.stringify(DEFAULT_DATA));
+  wsData = {weeks:{}};
+  saveData(); renderBoard(); renderSidebarStats(); populateSidebar(); populateSettings();
+}
+function wsShowHistory() {
+  var wh = el('wsHistory');
+  if (!wh) return;
+  var visible = wh.style.display !== 'none';
+  wh.style.display = visible ? 'none' : 'block';
+  if (!visible) renderWsHistory();
+}
+async function wsGenAgenda() {
+  var btn = el('wsAgendaBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Generating...'; }
+  var week = wsData.weeks[wsCurrentWeek];
+  var items = week ? (week.items || {}) : {};
+  var summary = D.wsBuckets.map(function(b) {
+    var bi = items[b.id] || {};
+    var notes = ((bi.nimish||[]).concat(bi.priyanka||[])).map(function(i){return i.text;}).join(', ');
+    return b.label + ': ' + (notes || 'No notes');
+  }).join('\n');
+  try {
+    var res = await callAI('Weekly sync agenda for ' + wsCurrentWeek + '.\nNotes:\n' + summary + '\nCreate a short structured agenda for a couples weekly sync meeting. Under 150 words. Plain text.');
+    var ac = el('wsAgendaCard'); if (ac) ac.style.display = 'block';
+    var at = el('wsAgendaText'); if (at) at.textContent = res;
+  } catch(ex) {}
+  if (btn) { btn.disabled = false; btn.innerHTML = '&#10024; Agenda'; }
+}
+
+//  STARTUP
 (function() {
   var sp = el('splash');
   if (sp) sp.style.display = 'flex';
