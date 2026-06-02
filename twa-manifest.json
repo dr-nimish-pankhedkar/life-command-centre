@@ -1,0 +1,47 @@
+{
+  "packageId": "com.lifecommandcentre.app",
+  "host": "life-command-centre-839a.vercel.app",
+  "name": "Life Command Centre",
+  "launcherName": "Life CC",
+  "display": "standalone",
+  "orientation": "portrait",
+  "themeColor": "#2563EB",
+  "navigationColor": "#2563EB",
+  "navigationColorDark": "#1E3A8A",
+  "navigationDividerColor": "#2563EB",
+  "navigationDividerColorDark": "#1E3A8A",
+  "backgroundColor": "#FAFAFA",
+  "enableNotifications": false,
+  "startUrl": "/",
+  "iconUrl": "https://life-command-centre-839a.vercel.app/icon-512.png",
+  "maskableIconUrl": "https://life-command-centre-839a.vercel.app/icon-512.png",
+  "monochromeIconUrl": "https://life-command-centre-839a.vercel.app/icon-192.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "android.keystore",
+    "alias": "android"
+  },
+  "appVersionCode": 1,
+  "appVersionName": "1.0.0",
+  "shortcuts": [],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://life-command-centre-839a.vercel.app/manifest.json",
+  "fallbackType": "customtabs",
+  "features": {
+    "locationDelegation": {
+      "enabled": false
+    },
+    "playBilling": {
+      "enabled": false
+    }
+  },
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullyImmersiveDisplay": false,
+  "minSdkVersion": 19,
+  "fingerprints": []
+}
