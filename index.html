@@ -350,12 +350,11 @@ button{cursor:pointer;}
       <div class="st"><div class="st-n" id="stD" style="color:#10B981">0</div><div class="st-l">Done</div></div>
     </div>
     <div class="sb-nav">
-      <button class="nav-btn active" onclick="nav('board')" id="nb-board"><span class="nav-ic">&#9638;</span>Board</button>
-      <button class="nav-btn" onclick="nav('ritual')" id="nb-ritual"><span class="nav-ic">&#9678;</span><span id="ritualLbl">&#127749; Ritual</span></button>
-      <button class="nav-btn" onclick="nav('ws')" id="nb-sync"><span class="nav-ic">&#128145;</span>Weekly Sync</button>
-      <button class="nav-btn" onclick="nav('insights')" id="nb-insights"><span class="nav-ic">&#9672;</span>Insights</button>
-      
-      <button class="nav-btn" onclick="nav('settings')" id="nb-config"><span class="nav-ic">&#8862;</span>Settings</button>
+      <button class="nav-btn active" onclick="nav('board')" id="nb-board" data-nav="board"><span class="nav-ic">&#9638;</span>Board</button>
+      <button class="nav-btn" onclick="nav('ritual')" id="nb-ritual" data-nav="ritual"><span class="nav-ic">&#9678;</span><span id="ritualLbl">&#127749; Ritual</span></button>
+      <button class="nav-btn" onclick="nav('ws')" id="nb-sync" data-nav="ws"><span class="nav-ic">&#128145;</span>Weekly Sync</button>
+      <button class="nav-btn" onclick="nav('insights')" id="nb-insights" data-nav="insights"><span class="nav-ic">&#9672;</span>Insights</button>
+      <button class="nav-btn" onclick="nav('settings')" id="nb-config" data-nav="settings"><span class="nav-ic">&#8862;</span>Settings</button>
       <div class="sb-section">
         <div class="sb-sec-lbl">MY BUCKETS</div>
         <div id="sbBuckets"></div>
@@ -569,12 +568,11 @@ button{cursor:pointer;}
   </div>
 </div>
 <div class="mob-nav" id="mobNav" style="display:none;">
-  <button class="mob-btn active" id="mb-board" onclick="nav('board')"><span class="mob-ic">&#9638;</span>Board</button>
-  <button class="mob-btn" id="mb-ritual" onclick="nav('ritual')"><span class="mob-ic">&#9678;</span>Ritual</button>
-  <button class="mob-btn" id="mb-sync" onclick="nav('ws')"><span class="mob-ic">&#128145;</span>Sync</button>
-  <button class="mob-btn" id="mb-insights" onclick="nav('insights')"><span class="mob-ic">&#9672;</span>Insights</button>
-  
-  <button class="mob-btn" id="mb-config" onclick="nav('settings')"><span class="mob-ic">&#8862;</span>Settings</button>
+  <button class="mob-btn active" id="mb-board" onclick="nav('board')" data-nav="board"><span class="mob-ic">&#9638;</span>Board</button>
+  <button class="mob-btn" id="mb-ritual" onclick="nav('ritual')" data-nav="ritual"><span class="mob-ic">&#9678;</span>Ritual</button>
+  <button class="mob-btn" id="mb-sync" onclick="nav('ws')" data-nav="ws"><span class="mob-ic">&#128145;</span>Sync</button>
+  <button class="mob-btn" id="mb-insights" onclick="nav('insights')" data-nav="insights"><span class="mob-ic">&#9672;</span>Insights</button>
+  <button class="mob-btn" id="mb-config" onclick="nav('settings')" data-nav="settings"><span class="mob-ic">&#8862;</span>Settings</button>
 </div>
 </div>
 <script>
@@ -1614,7 +1612,6 @@ function bootGuest() {
   showApp(); renderBoard(); renderSidebarStats(); populateSidebar(); applyEmotionMode();
 }
 function bootApp() {
-  showApp();
   try { var s = localStorage.getItem(STORAGE_KEY); D = s ? JSON.parse(s) : JSON.parse(JSON.stringify(DEFAULT_DATA)); }
   catch(e) { D = JSON.parse(JSON.stringify(DEFAULT_DATA)); }
   if (!D.moods) D.moods = [];
@@ -1625,6 +1622,7 @@ function bootApp() {
   wsCurrentWeek = getWeekId(new Date()); initWsWeek(wsCurrentWeek);
   initBktSelects(); populateSidebar(); populateSettings();
   var gb = el('guestBanner'); if (gb) gb.style.display = 'none';
+  showApp();
   renderBoard(); renderSidebarStats(); renderInsights();
   addPanelMsg('assistant', 'Good to see you, ' + (currentUser==='priyanka'?'Priyanka':'Dr. Nimish') + '! How can I help today?');
   sbLoad(); applyEmotionMode(); setTimeout(checkWeeklyWins, 2000);
