@@ -290,6 +290,10 @@ button{cursor:pointer;}
 .task-ic-btn:hover{background:#F0E0D0;color:#8B6B50;}
 .task-ic-del:hover{background:#FEE2E2;color:#EF4444;}
 @media(min-width:641px){.task-row-actions{display:flex;}.task-swipe-actions{display:none!important;}}
+#bktChipsRow::-webkit-scrollbar{display:none;}
+.mob-bkt-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;border:1.5px solid var(--bd);background:var(--sf);font-size:12px;font-weight:600;color:var(--mu);cursor:pointer;white-space:nowrap;flex-shrink:0;transition:all .15s;font-family:inherit;}
+.mob-bkt-chip.active{border-color:currentColor;background:color-mix(in srgb,currentColor 12%,transparent);}
+@media(min-width:641px){#bktChipsRow{display:none!important;}}
 </style>
 </head>
 <body>
@@ -404,7 +408,7 @@ button{cursor:pointer;}
         <input type="date" id="newTarget" style="margin-top:6px;width:100%;padding:8px 12px;border:1px solid var(--bd);border-radius:8px;font-size:13px;color:var(--tx);background:var(--sf);outline:none;" placeholder="Target date (optional)">
         </div>
       </div>
-      <div id="guestBanner" style="display:none;background:linear-gradient(135deg,#EEFFEF,#D4FAE8);border:1.5px solid #92F0A0;border-radius:14px;padding:10px 16px;margin-bottom:10px;font-size:11px;color:#1A7A40;font-weight:700;text-align:center;">&#128100; Guest Demo &mdash; sample data only. Nothing is saved.</div><div id="greetingCard" style="margin-bottom:10px;"></div><div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap;"><button id="filterToggle" onclick="toggleFilterDrawer()" style="padding:7px 14px;border-radius:50px;border:1.5px solid #E0D0C0;background:#fff;font-size:11px;font-weight:700;color:#8B6B50;cursor:pointer;font-family:Nunito,sans-serif;outline:none;">&#9776; Sort &amp; Filter</button><div id="activeChips" style="display:flex;gap:5px;flex-wrap:wrap;"></div></div><div id="filterDrawer" style="display:none;padding:10px 14px;background:#fff;border:1.5px solid #F0E0D0;border-radius:14px;margin-bottom:10px;flex-wrap:wrap;gap:6px;"><button class="sf-btn" id="filter-p1b" onclick="toggleFilter('p1')">&#9889; P1</button><button class="sf-btn" id="filter-p2b" onclick="toggleFilter('p2')">&#128204; P2</button><button class="sf-btn" id="sort-priorityb" onclick="setSort('priority')">&#8597; Priority</button><button class="sf-btn" id="sort-dateb" onclick="setSort('date')">&#128197; Date</button><button class="sf-btn" id="sort-bucketb" onclick="setSort('bucket')">&#128230; Bucket</button><button class="sf-btn" id="filter-doneb" onclick="toggleFilter('done')">&#10003; Done</button><button class="sf-btn" onclick="clearFilters()" style="color:#EF4444;">&#10005; Clear</button></div><div id="taskLists"></div>
+      <div id="guestBanner" style="display:none;background:linear-gradient(135deg,#EEFFEF,#D4FAE8);border:1.5px solid #92F0A0;border-radius:14px;padding:10px 16px;margin-bottom:10px;font-size:11px;color:#1A7A40;font-weight:700;text-align:center;">&#128100; Guest Demo &mdash; sample data only. Nothing is saved.</div><div id="greetingCard" style="margin-bottom:10px;"></div><div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap;"><button id="filterToggle" onclick="toggleFilterDrawer()" style="padding:7px 14px;border-radius:50px;border:1.5px solid #E0D0C0;background:#fff;font-size:11px;font-weight:700;color:#8B6B50;cursor:pointer;font-family:Nunito,sans-serif;outline:none;">&#9776; Sort &amp; Filter</button><div id="activeChips" style="display:flex;gap:5px;flex-wrap:wrap;"></div></div><div id="filterDrawer" style="display:none;padding:10px 14px;background:#fff;border:1.5px solid #F0E0D0;border-radius:14px;margin-bottom:10px;flex-wrap:wrap;gap:6px;"><button class="sf-btn" id="filter-p1b" onclick="toggleFilter('p1')">&#9889; P1</button><button class="sf-btn" id="filter-p2b" onclick="toggleFilter('p2')">&#128204; P2</button><button class="sf-btn" id="sort-priorityb" onclick="setSort('priority')">&#8597; Priority</button><button class="sf-btn" id="sort-dateb" onclick="setSort('date')">&#128197; Date</button><button class="sf-btn" id="sort-bucketb" onclick="setSort('bucket')">&#128230; Bucket</button><button class="sf-btn" id="filter-doneb" onclick="toggleFilter('done')">&#10003; Done</button><button class="sf-btn" onclick="clearFilters()" style="color:#EF4444;">&#10005; Clear</button></div><div id="bktChipsRow" style="display:flex;gap:6px;overflow-x:auto;padding:0 0 6px 0;margin-bottom:8px;scrollbar-width:none;-webkit-overflow-scrolling:touch;"></div><div id="taskLists"></div>
     </div>
     <div class="view" id="view-ritual">
       <div style="font-size:22px;font-weight:800;letter-spacing:-.5px;margin-bottom:4px;">Daily Ritual</div>
@@ -828,6 +832,7 @@ function renderBoard() {
   var strip = el('focusStrip'); if (strip) strip.style.display = 'none';
   renderGreeting();
   updateActiveChips();
+  renderMobBktChips();
   var html = '';
   if (currentSort !== 'priority' || activeFilters.size > 0) {
     fp.forEach(function(t) { html += tSwipeRowHTML(t, false); });
@@ -868,9 +873,11 @@ function toggleFilter(f) {
   renderBoard();
 }
 function clearFilters() {
-  activeFilters.clear(); currentSort = 'priority';
+  activeFilters.clear(); currentSort = 'priority'; activeBucket = 'all';
   document.querySelectorAll('[id^=sort-],[id^=filter-]').forEach(function(b) { b.classList.remove('active'); });
   var sp = el('sort-priority'); if (sp) sp.classList.add('active');
+  document.querySelectorAll('.bkt-nav').forEach(function(b) { b.classList.remove('active'); });
+  var allBtn = document.querySelector('[data-bkt="all"]'); if (allBtn) allBtn.classList.add('active');
   renderBoard();
 }
 function sortTasks(tasks) {
@@ -893,6 +900,15 @@ function filterBkt(bktId) {
   document.querySelectorAll('.bkt-nav').forEach(function(b) { b.classList.remove('active'); });
   var btn = document.querySelector('[data-bkt="' + bktId + '"]'); if (btn) btn.classList.add('active');
   renderBoard();
+}
+function renderMobBktChips() {
+  var row = el('bktChipsRow'); if (!row || !D) return;
+  var chips = '<button class="mob-bkt-chip' + (activeBucket==='all'?' active':'') + '" style="color:#71717A;" onclick="filterBkt(\'all\')">&#127968; All</button>';
+  (D.buckets || []).forEach(function(b) {
+    var isActive = activeBucket === b.id;
+    chips += '<button class="mob-bkt-chip' + (isActive?' active':'') + '" style="color:' + b.color + ';" onclick="filterBkt(\'' + b.id + '\')">' + b.icon + ' ' + b.label + '</button>';
+  });
+  row.innerHTML = chips;
 }
 
 //  TASK OPERATIONS 
