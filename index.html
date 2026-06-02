@@ -1623,6 +1623,8 @@ function bootApp() {
   initBktSelects(); populateSidebar(); populateSettings();
   var gb = el('guestBanner'); if (gb) gb.style.display = 'none';
   showApp();
+  var navParam = new URLSearchParams(location.search).get('nav');
+  if (navParam && ['board','ritual','ws','insights','settings'].includes(navParam)) nav(navParam);
   renderBoard(); renderSidebarStats(); renderInsights();
   addPanelMsg('assistant', 'Good to see you, ' + (currentUser==='priyanka'?'Priyanka':'Dr. Nimish') + '! How can I help today?');
   sbLoad(); applyEmotionMode(); setTimeout(checkWeeklyWins, 2000);
