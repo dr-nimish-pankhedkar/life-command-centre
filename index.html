@@ -525,6 +525,16 @@ button{cursor:pointer;}
         <button class="btn btn-sec btn-sm" onclick="showSetPin()">&#128273; Change My PIN</button>
       </div>
       <div class="card">
+        <div class="slabel">&#129302; AI ASSISTANT</div>
+        <div style="font-size:12px;color:var(--mu);margin-bottom:10px;line-height:1.6;">Paste your <strong>Gemini API key</strong> to enable morning briefing, evening review, and AI chat. Get a free key at <span style="color:var(--ac);">aistudio.google.com</span></div>
+        <div class="set-lbl">GEMINI API KEY</div>
+        <div style="display:flex;gap:8px;">
+          <input class="set-input" id="geminiKeyIn" type="password" placeholder="AIza..." style="flex:1;font-family:monospace;font-size:12px;" oninput="saveGeminiKey(this.value)"/>
+          <button class="btn btn-sec btn-sm" id="geminiKeyToggle" onclick="toggleGeminiKeyVis()" style="flex-shrink:0;">&#128065;</button>
+        </div>
+        <div id="geminiKeyStatus" style="font-size:11px;margin-top:6px;"></div>
+      </div>
+      <div class="card">
         <div class="slabel">&#127912; SKIN</div>
         <div style="font-size:12px;color:var(--mu);margin-bottom:10px">Your personal look. Each person picks their own.</div>
         <div class="skin-grid" id="skinGrid"></div>
@@ -588,6 +598,7 @@ const STORAGE_KEY='lcc-v4';
 const WS_STORAGE='lcc-ws-v1';
 const PW_KEY='lcc-pins';
 const SESSION_KEY='lcc-session';
+const GEMINI_KEY='lcc-gemini-key';
 const PRI_META={P1:{label:'Critical',color:'#EF4444',bg:'#FEF2F2',border:'#FECACA'},P2:{label:'Important',color:'#F59E0B',bg:'#FFFBEB',border:'#FDE68A'},P3:{label:'Someday',color:'#10B981',bg:'#ECFDF5',border:'#A7F3D0'}};
 const DEFAULT_BUCKETS=[{id:'cafe',label:'Cafe',icon:'\u2615',color:'#F59E0B'},{id:'family',label:'Family',icon:'\uD83C\uDFE0',color:'#EC4899'},{id:'health',label:'Health',icon:'\uD83D\uDCAA',color:'#10B981'},{id:'personal',label:'Personal',icon:'\uD83E\uDDE0',color:'#8B5CF6'},{id:'devp',label:'Dev & Learn',icon:'\uD83D\uDCDA',color:'#3B82F6'},{id:'finance',label:'Finance',icon:'\uD83D\uDCB0',color:'#06B6D4'}];
 const DEFAULT_WS_BUCKETS=[{id:'ws_fin',label:'Finance',icon:'\uD83D\uDCB0',color:'#10B981'},{id:'ws_kids',label:'Kids',icon:'\uD83D\uDC76',color:'#EC4899'},{id:'ws_home',label:'Home',icon:'\uD83C\uDFE0',color:'#F59E0B'},{id:'ws_hlth',label:'Health',icon:'\uD83D\uDCAA',color:'#3B82F6'},{id:'ws_dev',label:'Personal Dev',icon:'\uD83D\uDCDA',color:'#8B5CF6'}];
@@ -1574,9 +1585,23 @@ function populateSettings() {
         + '</div>';
     }).join('');
   }
+  var gkIn = el('geminiKeyIn'); var gkSt = el('geminiKeyStatus');
+  var storedKey = localStorage.getItem(GEMINI_KEY) || '';
+  if (gkIn) gkIn.value = storedKey;
+  if (gkSt) { gkSt.textContent = storedKey ? '✓ Key saved — AI features enabled' : 'No key set — AI features disabled'; gkSt.style.color = storedKey ? '#10B981' : '#F59E0B'; }
   renderSkinGrid(); renderLayoutGrid();
 }
 function saveSettings() { var sn = el('setName'); if (sn&&sn.value.trim()) D.settings.name=sn.value.trim(); saveData(); alert('Settings saved!'); }
+function saveGeminiKey(val) {
+  var v = val.trim();
+  if (v) { localStorage.setItem(GEMINI_KEY, v); } else { localStorage.removeItem(GEMINI_KEY); }
+  var st = el('geminiKeyStatus');
+  if (st) { st.textContent = v ? '✓ Key saved — AI features enabled' : ''; st.style.color = v ? '#10B981' : ''; }
+}
+function toggleGeminiKeyVis() {
+  var inp = el('geminiKeyIn'); if (!inp) return;
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
 function updateBucket(id, key, val) { var b = D.buckets.find(function(bk){return bk.id===id;}); if (b) b[key]=val; saveData(); populateSidebar(); }
 function addBucket() { D.buckets.push({id:'bkt'+Date.now(),label:'New Bucket',icon:'&#128230;',color:'#6366F1'}); saveData(); populateSettings(); populateSidebar(); }
 
@@ -1750,18 +1775,42 @@ function checkSession() { try { var s=JSON.parse(localStorage.getItem(SESSION_KE
 
 //  AI 
 async function callAI(prompt, history) {
+  var gKey = localStorage.getItem(GEMINI_KEY) || '';
+  if (gKey) {
+    // Direct Gemini API call
+    var contents = [];
+    if (history && history.length) {
+      history.forEach(function(m) {
+        contents.push({role: m.role === 'assistant' ? 'model' : 'user', parts:[{text:m.content}]});
+      });
+    }
+    contents.push({role:'user', parts:[{text:prompt}]});
+    var payload = {
+      contents: contents,
+      systemInstruction: {parts:[{text:'You are LCC Assistant, a warm helpful productivity AI for Dr. Nimish Pankhedkar and Priyanka. Keep responses concise and actionable.'}]}
+    };
+    var res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + gKey, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) { var err = await res.json().catch(function(){return {};}); throw new Error((err.error&&err.error.message) || 'Gemini error ' + res.status); }
+    var data = await res.json();
+    return (data.candidates&&data.candidates[0]&&data.candidates[0].content&&data.candidates[0].content.parts&&data.candidates[0].content.parts[0].text) || '';
+  }
+  // Fallback: Supabase proxy
   var messages = [];
   if (history && history.length) history.forEach(function(m) { messages.push({role:m.role==='assistant'?'assistant':'user',content:m.content}); });
   messages.push({role:'user', content:prompt});
-  var res = await fetch(SB_URL+'/functions/v1/ai-proxy', {
+  var res2 = await fetch(SB_URL+'/functions/v1/ai-proxy', {
     method: 'POST',
     headers: {'Content-Type':'application/json',Authorization:'Bearer '+SB_ANON},
     body: JSON.stringify({messages:messages, systemPrompt:'You are LCC Assistant, a warm helpful productivity AI for Dr. Nimish Pankhedkar and Priyanka. Keep responses concise and actionable.'})
   });
-  if (!res.ok) throw new Error('AI error ' + res.status);
-  var data = await res.json();
-  if (data.error) throw new Error(data.error);
-  return data.text || data.content || '';
+  if (!res2.ok) throw new Error('AI error ' + res2.status + '. Add Gemini API key in Settings to fix.');
+  var data2 = await res2.json();
+  if (data2.error) throw new Error(data2.error);
+  return data2.text || data2.content || '';
 }
 
 //  MISSING IMPLEMENTATIONS
