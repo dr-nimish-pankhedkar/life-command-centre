@@ -605,7 +605,9 @@ button{cursor:pointer;}
       <div class="card">
         <div class="slabel">DATA &amp; BACKUP</div>
         <div style="font-size:13px;color:var(--mu);margin-bottom:12px;line-height:1.6;">Data syncs to Supabase cloud &#8212; available on all devices.</div>
+        <div id="syncHealthDiv" style="font-size:12px;color:var(--mu);margin-bottom:10px;"></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-sec btn-sm" onclick="forceSyncNow()">&#8635; Sync Now</button>
           <button class="btn btn-sec btn-sm" onclick="exportData()">&#11015; Export JSON</button>
           <button class="btn btn-sec btn-sm" onclick="clearData()">&#8634; Reset</button>
         </div>
@@ -1720,6 +1722,11 @@ function populateSettings() {
     else if (!permOk) { ns.textContent = '⚠️ Allow notifications in browser to activate'; ns.style.color = '#F59E0B'; }
     else { ns.textContent = '✓ Reminder set for ' + ((D.settings && D.settings.eveningTime) || '20:00'); ns.style.color = '#10B981'; }
   }
+  var sdiv = el('syncHealthDiv');
+  if (sdiv && !sdiv.textContent) {
+    var syncTxt = document.querySelector('.sync-txt');
+    if (syncTxt) { sdiv.textContent = 'Last status: ' + syncTxt.textContent; sdiv.style.color = syncTxt.textContent === 'Synced' ? '#10B981' : '#F59E0B'; }
+  }
   renderSkinGrid(); renderLayoutGrid();
 }
 function saveSettings() { var sn = el('setName'); if (sn&&sn.value.trim()) D.settings.name=sn.value.trim(); saveData(); alert('Settings saved!'); }
@@ -1897,11 +1904,18 @@ function saveWs() {
 async function sbSave() {
   if (currentUser === 'guest') return;
   try {
-    var payload = {id:currentUser, tasks:D.tasks, buckets:D.buckets, moods:D.moods, settings:D.settings, ws_buckets:D.wsBuckets, updated_at:new Date().toISOString()};
+    // Store wsBuckets inside settings to avoid needing a separate DB column
+    var settingsToSave = Object.assign({}, D.settings, {_wsBuckets: D.wsBuckets});
+    var payload = {id:currentUser, tasks:D.tasks, buckets:D.buckets, moods:D.moods, settings:settingsToSave, updated_at:new Date().toISOString()};
     setSyncStatus('saving');
     var res = await fetch(SB_URL+'/rest/v1/lcc_data', {method:'POST', headers:{'Content-Type':'application/json',apikey:SB_ANON,Authorization:'Bearer '+SB_ANON,Prefer:'resolution=merge-duplicates,return=minimal'}, body:JSON.stringify(payload)});
-    if (res.ok) setSyncStatus('saved'); else setSyncStatus('error');
-  } catch(e) { setSyncStatus('local'); }
+    if (res.ok) { setSyncStatus('saved'); }
+    else {
+      var errBody = ''; try { errBody = JSON.stringify(await res.json()); } catch(e2) {}
+      console.error('SB save failed', res.status, errBody);
+      setSyncStatus('error', res.status + (errBody ? ': ' + errBody : ''));
+    }
+  } catch(e) { console.error('SB save error:', e); setSyncStatus('local'); }
 }
 async function sbLoad() {
   if (currentUser === 'guest') return;
@@ -1914,14 +1928,29 @@ async function sbLoad() {
       var arr = await res.json();
       if (arr && arr[0]) {
         var remote = arr[0];
-        if (remote.tasks && remote.tasks.length) D.tasks = remote.tasks;
-        if (remote.buckets && remote.buckets.length) D.buckets = remote.buckets;
+        // Tasks: use remote if it exists (even empty array means user cleared all tasks)
+        if (Array.isArray(remote.tasks)) D.tasks = remote.tasks;
+        if (Array.isArray(remote.buckets) && remote.buckets.length) D.buckets = remote.buckets;
         if (remote.moods) D.moods = remote.moods;
-        if (remote.settings && Object.keys(remote.settings).length) D.settings = Object.assign(D.settings, remote.settings);
+        if (remote.settings && Object.keys(remote.settings).length) {
+          // Extract wsBuckets stored inside settings (new format)
+          var _wb = remote.settings._wsBuckets;
+          var cleanSettings = Object.assign({}, remote.settings);
+          delete cleanSettings._wsBuckets;
+          D.settings = Object.assign({}, D.settings, cleanSettings);
+          if (_wb && _wb.length) D.wsBuckets = _wb;
+        }
+        // Legacy: ws_buckets as a top-level column (old format)
         if (remote.ws_buckets && remote.ws_buckets.length) D.wsBuckets = remote.ws_buckets;
         localStorage.setItem(STORAGE_KEY, JSON.stringify(D));
         renderBoard(); renderSidebarStats(); populateSidebar(); setSyncStatus('saved');
+      } else if (arr && arr.length === 0) {
+        // No row yet — first login on new device, data will be saved on next change
+        setSyncStatus('saved');
       }
+    } else {
+      var loadErr = ''; try { loadErr = JSON.stringify(await res.json()); } catch(e2) {}
+      console.error('SB load failed', res.status, loadErr);
     }
   } catch(e) { console.warn('SB load:', e.message); }
   try {
@@ -1941,10 +1970,30 @@ async function sbSaveWs() {
     });
   } catch(e) {}
 }
-function setSyncStatus(status) {
+async function forceSyncNow() {
+  var div = el('syncHealthDiv');
+  if (div) { div.textContent = '⏳ Syncing...'; div.style.color = 'var(--mu)'; }
+  setSyncStatus('saving');
+  try {
+    await sbSave();
+    await sbLoad();
+    if (div) { div.textContent = '✓ Sync complete — ' + new Date().toLocaleTimeString(); div.style.color = '#10B981'; }
+  } catch(e) {
+    if (div) { div.textContent = '⚠️ Sync failed: ' + e.message; div.style.color = '#EF4444'; }
+  }
+}
+function setSyncStatus(status, detail) {
   var dot = document.querySelector('.sync-dot'); var txt = document.querySelector('.sync-txt');
   if (dot) { dot.className='sync-dot'; if(status==='saving')dot.classList.add('saving'); else if(status==='error')dot.classList.add('error'); }
-  if (txt) txt.textContent = status==='saved'?'Synced':status==='saving'?'Saving...':status==='error'?'Sync error':'Local only';
+  var label = status==='saved'?'Synced':status==='saving'?'Saving...':status==='error'?'Sync error':'Local only';
+  if (txt) { txt.textContent = label; txt.title = detail||''; }
+  if (status === 'error') {
+    // Show a brief red toast so the user knows sync failed
+    var t = el('onlineToast');
+    if (!t) { t = document.createElement('div'); t.id='onlineToast'; t.style.cssText='position:fixed;top:16px;left:50%;transform:translateX(-50%);background:#EF4444;color:#fff;padding:8px 18px;border-radius:20px;font-size:13px;font-weight:600;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;'; document.body.appendChild(t); }
+    t.textContent = '⚠️ Sync failed — check connection'; t.style.background='#EF4444';
+    t.style.opacity='1'; setTimeout(function(){t.style.opacity='0';},3500);
+  }
 }
 function saveSession(user) { localStorage.setItem(SESSION_KEY, JSON.stringify({user:user, expiry:Date.now()+7*86400000})); }
 function checkSession() { try { var s=JSON.parse(localStorage.getItem(SESSION_KEY)||'null'); if(s&&s.expiry>Date.now())return s.user; } catch(e) {} return null; }
