@@ -1,4 +1,4 @@
-const CACHE = 'lcc-v5';
+const CACHE = 'lcc-v6';
 const OFFLINE_URL = '/offline.html';
 const STATIC_ASSETS = [
   '/',
@@ -65,18 +65,24 @@ self.addEventListener('fetch', e => {
   );
 });
 
-// Scheduled notification message from the app
+// Scheduled notification messages from the app
 self.addEventListener('message', e => {
-  if (e.data && e.data.type === 'SCHEDULE_EVENING') {
+  if (!e.data) return;
+  if (e.data.type === 'SCHEDULE_EVENING') {
     const { msUntil, title, body } = e.data;
     setTimeout(() => {
       self.registration.showNotification(title, {
-        body,
-        icon: '/icon-192.png',
-        badge: '/icon-192.png',
-        tag: 'lcc-evening',
-        renotify: false,
-        data: { url: '/?nav=ritual' }
+        body, icon: '/icon-192.png', badge: '/icon-192.png',
+        tag: 'lcc-evening', renotify: false, data: { url: '/?nav=ritual' }
+      });
+    }, msUntil);
+  }
+  if (e.data.type === 'SCHEDULE_HABIT') {
+    const { msUntil, title, body } = e.data;
+    setTimeout(() => {
+      self.registration.showNotification(title, {
+        body, icon: '/icon-192.png', badge: '/icon-192.png',
+        tag: 'lcc-habit', renotify: false, data: { url: '/?nav=habits' }
       });
     }, msUntil);
   }
