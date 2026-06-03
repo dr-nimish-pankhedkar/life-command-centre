@@ -1598,11 +1598,11 @@ function populateSettings() {
     }).join('');
   }
   var gkIn = el('geminiKeyIn'); var gkSt = el('geminiKeyStatus');
-  var storedKey = localStorage.getItem(GEMINI_KEY) || '';
+  var storedKey = (D.settings && D.settings.geminiKey) || localStorage.getItem(GEMINI_KEY) || '';
   if (gkIn) gkIn.value = storedKey;
-  if (gkSt) { gkSt.textContent = storedKey ? '✓ Key saved — AI features enabled' : 'No key set — AI features disabled'; gkSt.style.color = storedKey ? '#10B981' : '#F59E0B'; }
+  if (gkSt) { gkSt.textContent = storedKey ? '✓ Key saved — syncs across devices' : 'No key set — AI features disabled'; gkSt.style.color = storedKey ? '#10B981' : '#F59E0B'; }
   var gmSel = el('geminiModelSel'); var gmCust = el('geminiModelCustom');
-  var storedModel = localStorage.getItem(GEMINI_MODEL) || 'gemini-1.5-flash-latest';
+  var storedModel = (D.settings && D.settings.geminiModel) || localStorage.getItem(GEMINI_MODEL) || 'gemini-1.5-flash-latest';
   var knownModels = ['gemini-1.5-flash-latest','gemini-1.5-flash-8b-latest','gemini-2.0-flash-lite','gemini-2.0-flash'];
   if (gmSel) {
     if (knownModels.includes(storedModel)) { gmSel.value = storedModel; if (gmCust) gmCust.style.display='none'; }
@@ -1613,9 +1613,11 @@ function populateSettings() {
 function saveSettings() { var sn = el('setName'); if (sn&&sn.value.trim()) D.settings.name=sn.value.trim(); saveData(); alert('Settings saved!'); }
 function saveGeminiKey(val) {
   var v = val.trim();
-  if (v) { localStorage.setItem(GEMINI_KEY, v); } else { localStorage.removeItem(GEMINI_KEY); }
+  D.settings.geminiKey = v || undefined;
+  localStorage.removeItem(GEMINI_KEY); // migrate: no longer needed in localStorage
+  saveData();
   var st = el('geminiKeyStatus');
-  if (st) { st.textContent = v ? '✓ Key saved — AI features enabled' : ''; st.style.color = v ? '#10B981' : ''; }
+  if (st) { st.textContent = v ? '✓ Key saved — syncs across devices' : ''; st.style.color = v ? '#10B981' : ''; }
 }
 function toggleGeminiKeyVis() {
   var inp = el('geminiKeyIn'); if (!inp) return;
@@ -1625,10 +1627,12 @@ function saveGeminiModel(val) {
   var sel = el('geminiModelSel'); var cust = el('geminiModelCustom');
   if (val === 'custom') { if (cust) { cust.style.display='block'; cust.focus(); } return; }
   if (cust) cust.style.display = 'none';
-  localStorage.setItem(GEMINI_MODEL, val);
+  D.settings.geminiModel = val;
+  localStorage.removeItem(GEMINI_MODEL);
+  saveData();
 }
 async function detectGeminiModels() {
-  var gKey = localStorage.getItem(GEMINI_KEY) || '';
+  var gKey = (D.settings && D.settings.geminiKey) || localStorage.getItem(GEMINI_KEY) || '';
   var st = el('detectModelStatus');
   if (!gKey) { if (st) { st.textContent = '⚠️ Save your API key first'; st.style.color='#F59E0B'; } return; }
   if (st) { st.textContent = '🔍 Fetching available models...'; st.style.color='var(--mu)'; }
@@ -1639,11 +1643,10 @@ async function detectGeminiModels() {
     var models = (data.models || [])
       .filter(function(m) { return (m.supportedGenerationMethods||[]).includes('generateContent'); })
       .map(function(m) { return m.name.replace('models/',''); });
-    // Preference order for free-tier flash models
     var preferred = ['gemini-1.5-flash-latest','gemini-1.5-flash-8b-latest','gemini-2.0-flash-lite','gemini-2.0-flash','gemini-1.5-pro-latest'];
     var pick = preferred.find(function(p) { return models.includes(p); }) || models.find(function(m){ return m.includes('flash'); }) || models[0];
     if (!pick) throw new Error('No generateContent models found');
-    localStorage.setItem(GEMINI_MODEL, pick);
+    D.settings.geminiModel = pick; localStorage.removeItem(GEMINI_MODEL); saveData();
     var knownModels = ['gemini-1.5-flash-latest','gemini-1.5-flash-8b-latest','gemini-2.0-flash-lite','gemini-2.0-flash'];
     var sel = el('geminiModelSel'); var cust = el('geminiModelCustom');
     if (sel) {
@@ -1832,7 +1835,7 @@ function checkSession() { try { var s=JSON.parse(localStorage.getItem(SESSION_KE
 
 //  AI 
 async function callAI(prompt, history) {
-  var gKey = localStorage.getItem(GEMINI_KEY) || '';
+  var gKey = (D && D.settings && D.settings.geminiKey) || localStorage.getItem(GEMINI_KEY) || '';
   if (gKey) {
     var contents = [];
     if (history && history.length) {
@@ -1846,10 +1849,10 @@ async function callAI(prompt, history) {
       systemInstruction: {parts:[{text:'You are LCC Assistant, a warm helpful productivity AI for Dr. Nimish Pankhedkar and Priyanka. Keep responses concise and actionable.'}]}
     };
     // Try saved model first, then fallback chain
-    var savedModel = localStorage.getItem(GEMINI_MODEL);
+    var savedModel = (D && D.settings && D.settings.geminiModel) || localStorage.getItem(GEMINI_MODEL) || null;
     var FALLBACKS = ['gemini-1.5-flash-latest','gemini-2.0-flash-lite','gemini-1.5-flash-8b-latest','gemini-2.0-flash','gemini-1.5-pro-latest'];
     // Clear any bare name (no suffix) that was cached from old versions
-    if (savedModel && /^gemini-\d\.\d-(flash|pro|ultra)$/.test(savedModel)) { localStorage.removeItem(GEMINI_MODEL); savedModel = null; }
+    if (savedModel && /^gemini-\d\.\d-(flash|pro|ultra)$/.test(savedModel)) { if (D&&D.settings) delete D.settings.geminiModel; localStorage.removeItem(GEMINI_MODEL); savedModel = null; }
     var modelsToTry = savedModel ? [savedModel].concat(FALLBACKS.filter(function(m){return m!==savedModel;})) : FALLBACKS;
     var lastErr = '';
     for (var i = 0; i < modelsToTry.length; i++) {
@@ -1868,7 +1871,7 @@ async function callAI(prompt, history) {
         var data = await res.json();
         var text = (data.candidates&&data.candidates[0]&&data.candidates[0].content&&data.candidates[0].content.parts&&data.candidates[0].content.parts[0].text) || '';
         // Save the working model
-        if (model !== savedModel) localStorage.setItem(GEMINI_MODEL, model);
+        if (model !== savedModel) { if (D&&D.settings) { D.settings.geminiModel=model; saveData(); } else localStorage.setItem(GEMINI_MODEL, model); }
         return text;
       } catch(ex) {
         var exMsg = ex.message || '';
