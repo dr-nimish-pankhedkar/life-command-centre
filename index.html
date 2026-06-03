@@ -294,6 +294,11 @@ button{cursor:pointer;}
 .mob-bkt-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;border:1.5px solid var(--bd);background:var(--sf);font-size:12px;font-weight:600;color:var(--mu);cursor:pointer;white-space:nowrap;flex-shrink:0;transition:all .15s;font-family:inherit;}
 .mob-bkt-chip.active{border-color:currentColor;background:color-mix(in srgb,currentColor 12%,transparent);}
 @media(min-width:641px){#bktChipsRow{display:none!important;}}
+#mBktRow::-webkit-scrollbar{display:none;}
+.morn-bkt-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 13px;border-radius:20px;border:1.5px solid var(--bd);background:var(--sf);font-size:12px;font-weight:600;color:var(--mu);cursor:pointer;white-space:nowrap;flex-shrink:0;transition:all .15s;font-family:inherit;}
+.morn-bkt-chip.active{border-color:currentColor;background:color-mix(in srgb,currentColor 15%,transparent);color:inherit;}
+.mode-chip{padding:6px 14px;border-radius:20px;border:1.5px solid var(--bd);background:var(--sf);font-size:12px;font-weight:600;color:var(--mu);cursor:pointer;transition:all .15s;font-family:inherit;}
+.mode-chip.active{background:var(--al);border-color:var(--ac);color:var(--ac);}
 </style>
 </head>
 <body>
@@ -427,7 +432,15 @@ button{cursor:pointer;}
             <button class="mood-btn" onclick="pickMood(this,'m')">&#128560; Anxious</button>
             <button class="mood-btn" onclick="pickMood(this,'m')">&#128293; Focused</button>
           </div>
-          <div class="slabel">BRAIN DUMP (optional)</div>
+          <div class="slabel" style="margin-top:14px;">WHICH BUCKET TO FOCUS ON?</div>
+          <div id="mBktRow" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;-webkit-overflow-scrolling:touch;margin-bottom:4px;"></div>
+          <div class="slabel" style="margin-top:14px;">TODAY'S MODE</div>
+          <div style="display:flex;gap:7px;flex-wrap:wrap;">
+            <button class="mode-chip active" id="mMode-deep" onclick="pickMMode('deep')">&#9889; Deep Work</button>
+            <button class="mode-chip" id="mMode-quick" onclick="pickMMode('quick')">&#9989; Quick Wins</button>
+            <button class="mode-chip" id="mMode-maint" onclick="pickMMode('maint')">&#128260; Maintenance</button>
+          </div>
+          <div class="slabel" style="margin-top:14px;">BRAIN DUMP (optional)</div>
           <textarea class="ritual-area" id="mNote" placeholder="Anything weighing on your mind..."></textarea>
         </div>
         <div class="card">
@@ -630,6 +643,8 @@ var editingTaskId = null;
 var activeBucket = 'all';
 var currentSort = 'priority';
 var activeFilters = new Set();
+var mFocusBucket = 'all';
+var mMode = 'deep';
 var wsCurrentWeek = '';
 var chatOpen = false;
 var filterDrawerOpen = false;
@@ -1184,7 +1199,7 @@ function nav(v) {
   var vEl = el('view-' + v); if (vEl) vEl.classList.add('active');
   document.querySelectorAll('[data-nav="' + v + '"]').forEach(function(b) { b.classList.add('active'); });
   if (v === 'board') renderBoard();
-  else if (v === 'ritual') renderEveningDone();
+  else if (v === 'ritual') { renderEveningDone(); renderMornBktChips(); }
   else if (v === 'ws') renderWsView();
   else if (v === 'insights') renderInsights();
   else if (v === 'settings') populateSettings();
@@ -1243,6 +1258,24 @@ function initBktSelects() {
 
 //  RITUAL 
 function saveMood(type, mood) { if (!D.moods) D.moods=[]; D.moods.push({type:type, mood:mood, date:new Date().toISOString().split('T')[0], color:type==='morning'?'#FF6B35':'#7C3AED'}); saveData(); }
+function renderMornBktChips() {
+  var row = el('mBktRow'); if (!row || !D) return;
+  var chips = '<button class="morn-bkt-chip' + (mFocusBucket==='all'?' active" style="color:#71717A"':'" style="color:#71717A"') + ' onclick="pickMFocus(\'all\')">&#127968; All</button>';
+  (D.buckets||[]).forEach(function(b) {
+    chips += '<button class="morn-bkt-chip' + (mFocusBucket===b.id?' active':'') + '" style="color:'+b.color+';" onclick="pickMFocus(\''+b.id+'\')">'+b.icon+' '+b.label+'</button>';
+  });
+  row.innerHTML = chips;
+}
+function pickMFocus(bktId) {
+  mFocusBucket = bktId;
+  renderMornBktChips();
+}
+function pickMMode(mode) {
+  mMode = mode;
+  ['deep','quick','maint'].forEach(function(m) {
+    var b = el('mMode-'+m); if (b) b.classList.toggle('active', m===mode);
+  });
+}
 function renderEveningDone() {
   var done = D.tasks.filter(function(t) { return t.done && (!t.owner||t.owner===currentUser); });
   var hdr = el('eDoneHdr'); if (hdr) hdr.textContent = 'COMPLETED TODAY (' + done.length + ')';
@@ -1257,30 +1290,48 @@ function renderEveningDone() {
 }
 async function runMorning() {
   var btn = el('mBtn'); if (!btn) return;
-  btn.disabled = true; btn.textContent = '\u23f3 Generating...';
-  var p1s = D.tasks.filter(function(t) { return !t.done&&(!t.owner||t.owner===currentUser)&&t.priority==='P1'; });
-  var p = D.tasks.filter(function(t) { return !t.done&&(!t.owner||t.owner===currentUser); }).map(function(t) { return '['+t.priority+'] '+t.text; }).join('\n');
-  var ml = el('mFocus');
-  if (ml) {
-    ml.innerHTML = p1s.slice(0,3).map(function(t) {
-      var b = D.buckets.find(function(bk) { return bk.id===t.bucket; });
-      var m = PRI_META[t.priority]||PRI_META['P2'];
-      return '<div style="display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid var(--ab);">'
-        + '<input type="checkbox" data-tid="' + t.id + '" onchange="toggleTask(parseInt(this.dataset.tid))" style="accent-color:var(--g);width:15px;height:15px;cursor:pointer;"/>'
-        + '<span style="font-size:13px;">' + (b&&b.icon?b.icon:'\u2022') + '</span>'
-        + '<span style="flex:1;font-size:13px;font-weight:500;">' + esc(t.text) + '</span>'
-        + '<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:12px;background:' + m.color + '18;color:' + m.color + ';">' + t.priority + '</span>'
-        + '</div>';
-    }).join('');
+  btn.disabled = true; btn.innerHTML = '&#9203; Thinking...';
+
+  var my = D.tasks.filter(function(t) { return !t.done && (!t.owner||t.owner===currentUser); });
+  var focusBkt = D.buckets.find(function(b) { return b.id===mFocusBucket; });
+  var focusLabel = focusBkt ? (focusBkt.icon+' '+focusBkt.label) : 'All buckets';
+  var moodBtn = el('mMoodRow') && el('mMoodRow').querySelector('.mood-btn.active');
+  var mood = moodBtn ? moodBtn.textContent.trim() : 'Not specified';
+  var note = (el('mNote') && el('mNote').value.trim()) || '';
+  var modeLabels = {deep:'⚡ Deep Work (complex, high-focus tasks)', quick:'✅ Quick Wins (fast tasks, clearing backlog)', maint:'🔄 Maintenance (routine, keep-things-running tasks)'};
+  var modeDesc = modeLabels[mMode] || modeLabels.deep;
+
+  var focusTasks = mFocusBucket==='all' ? my : my.filter(function(t){ return t.bucket===mFocusBucket; });
+  var otherP1 = mFocusBucket==='all' ? [] : my.filter(function(t){ return t.priority==='P1' && t.bucket!==mFocusBucket; });
+  function fmtTask(t) {
+    var b = D.buckets.find(function(bk){return bk.id===t.bucket;})||{label:t.bucket,icon:''};
+    return '['+t.priority+'] '+b.icon+' '+t.text+' ('+b.label+')';
   }
+  var taskBlock = focusTasks.length ? focusTasks.map(fmtTask).join('\n') : 'No tasks in this bucket.';
+  var otherBlock = otherP1.length ? '\nOther urgent P1 tasks:\n'+otherP1.map(fmtTask).join('\n') : '';
+
+  var prompt =
+    'Morning briefing for Dr. Nimish.\n'+
+    'Mood: '+mood+'\n'+
+    'Focus area: '+focusLabel+'\n'+
+    'Mode: '+modeDesc+'\n'+
+    (note?'Brain dump: "'+note+'"\n':'')+
+    '\nTasks in focus area:\n'+taskBlock+otherBlock+
+    '\n\nRespond with exactly this structure:\n'+
+    '1. ONE sentence matching their mood and mode (warm, personal, specific — not generic)\n'+
+    '2. TOP 3 TASKS for today — chosen smartly based on their mode and focus:\n'+
+    '   For each: task name + one-line reason WHY this task today\n'+
+    'Be direct. No filler. Plain text only.';
+
   try {
-    var res = await callAI('Morning briefing. Tasks:\n' + p + '\nGive 2 sentence energetic motivational message. Plain text only.');
+    var res = await callAI(prompt);
     var mc = el('mResCard'); if (mc) mc.style.display = 'block';
-    var mt = el('mRes'); if (mt) mt.textContent = res;
-    btn.innerHTML = '&#128336; Run Again';
+    var mt = el('mRes'); if (mt) mt.innerHTML = esc(res).replace(/\n/g,'<br>');
+    var mfl = el('mFocus'); if (mfl) mfl.innerHTML = '';
+    btn.innerHTML = '&#128336; Regenerate';
   } catch(ex) {
     var mc2 = el('mResCard'); if (mc2) mc2.style.display = 'block';
-    var mt2 = el('mRes'); if (mt2) mt2.textContent = '⚠️ AI unavailable: ' + (ex.message || 'check console');
+    var mt2 = el('mRes'); if (mt2) mt2.textContent = '⚠️ AI unavailable: ' + (ex.message || 'check connection');
     btn.innerHTML = '&#9728;&#65039; Generate Morning Briefing';
   }
   btn.disabled = false;
