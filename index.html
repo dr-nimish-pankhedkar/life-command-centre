@@ -542,6 +542,8 @@ button{cursor:pointer;}
           <option value="custom">— enter custom model name —</option>
         </select>
         <input class="set-input" id="geminiModelCustom" placeholder="e.g. gemini-1.5-pro-latest" style="margin-top:6px;display:none;font-family:monospace;font-size:12px;" oninput="saveGeminiModel(this.value)"/>
+        <button class="btn btn-sec btn-sm" onclick="detectGeminiModels()" style="margin-top:8px;width:100%;">&#128269; Auto-detect working model</button>
+        <div id="detectModelStatus" style="font-size:11px;margin-top:6px;"></div>
       </div>
       <div class="card">
         <div class="slabel">&#127912; SKIN</div>
@@ -1625,6 +1627,34 @@ function saveGeminiModel(val) {
   if (cust) cust.style.display = 'none';
   localStorage.setItem(GEMINI_MODEL, val);
 }
+async function detectGeminiModels() {
+  var gKey = localStorage.getItem(GEMINI_KEY) || '';
+  var st = el('detectModelStatus');
+  if (!gKey) { if (st) { st.textContent = '⚠️ Save your API key first'; st.style.color='#F59E0B'; } return; }
+  if (st) { st.textContent = '🔍 Fetching available models...'; st.style.color='var(--mu)'; }
+  try {
+    var r = await fetch('https://generativelanguage.googleapis.com/v1beta/models?key=' + gKey);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    var data = await r.json();
+    var models = (data.models || [])
+      .filter(function(m) { return (m.supportedGenerationMethods||[]).includes('generateContent'); })
+      .map(function(m) { return m.name.replace('models/',''); });
+    // Preference order for free-tier flash models
+    var preferred = ['gemini-1.5-flash-latest','gemini-1.5-flash-8b-latest','gemini-2.0-flash-lite','gemini-2.0-flash','gemini-1.5-pro-latest'];
+    var pick = preferred.find(function(p) { return models.includes(p); }) || models.find(function(m){ return m.includes('flash'); }) || models[0];
+    if (!pick) throw new Error('No generateContent models found');
+    localStorage.setItem(GEMINI_MODEL, pick);
+    var knownModels = ['gemini-1.5-flash-latest','gemini-1.5-flash-8b-latest','gemini-2.0-flash-lite','gemini-2.0-flash'];
+    var sel = el('geminiModelSel'); var cust = el('geminiModelCustom');
+    if (sel) {
+      if (knownModels.includes(pick)) { sel.value = pick; if (cust) cust.style.display='none'; }
+      else { sel.value = 'custom'; if (cust) { cust.style.display='block'; cust.value=pick; } }
+    }
+    if (st) { st.textContent = '✓ Selected: ' + pick; st.style.color='#10B981'; }
+  } catch(ex) {
+    if (st) { st.textContent = '⚠️ ' + (ex.message||'Failed'); st.style.color='#EF4444'; }
+  }
+}
 function updateBucket(id, key, val) { var b = D.buckets.find(function(bk){return bk.id===id;}); if (b) b[key]=val; saveData(); populateSidebar(); }
 function addBucket() { D.buckets.push({id:'bkt'+Date.now(),label:'New Bucket',icon:'&#128230;',color:'#6366F1'}); saveData(); populateSettings(); populateSidebar(); }
 
@@ -1692,6 +1722,10 @@ function bootGuest() {
   showApp(); renderBoard(); renderSidebarStats(); populateSidebar(); applyEmotionMode();
 }
 function bootApp() {
+  // Migrate stale model names (no version suffix = broken on v1beta)
+  var _m = localStorage.getItem(GEMINI_MODEL);
+  if (_m && _m === 'gemini-1.5-flash') localStorage.removeItem(GEMINI_MODEL);
+  if (_m && _m === 'gemini-1.5-flash-8b') localStorage.removeItem(GEMINI_MODEL);
   try { var s = localStorage.getItem(STORAGE_KEY); D = s ? JSON.parse(s) : JSON.parse(JSON.stringify(DEFAULT_DATA)); }
   catch(e) { D = JSON.parse(JSON.stringify(DEFAULT_DATA)); }
   if (!D.moods) D.moods = [];
