@@ -1304,8 +1304,9 @@ function wsColHTML(bucketId, who, items, isClosed) {
   for (var i = 0; i < items.length; i++) {
     var item = items[i]; var carried = item.carried ? ' carried' : '';
     var badge = item.carried ? '<span class="ws-carried-badge">&#8617; carried</span>' : '';
+    var taskBadge = item.isTask ? '<span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;background:#A55EEA18;color:#A55EEA;flex-shrink:0;">&#10003; task</span>' : '';
     var delBtn = isClosed ? '' : '<button class="ws-item-del" data-bkt="' + bucketId + '" data-who="' + who + '" data-idx="' + i + '" onclick="wsDeleteItem(this.dataset.bkt,this.dataset.who,parseInt(this.dataset.idx))">&#10005;</button>';
-    html += '<div class="ws-item' + carried + '"><span class="ws-item-txt">' + esc(item.text) + '</span>' + badge + delBtn + '</div>';
+    html += '<div class="ws-item' + carried + '"><span class="ws-item-txt">' + esc(item.text) + '</span>' + taskBadge + badge + delBtn + '</div>';
   }
   if (!isClosed) {
     // Note input
@@ -1358,7 +1359,13 @@ async function wsAddTask(bkt, who) {
   } catch(ex) {}
   D.tasks.push({id:Date.now(),text:txt,bucket:mappedBucket,priority:'P2',done:false,created:Date.now(),owner:who,target:null,fromSync:true});
   saveData(); renderBoard(); renderSidebarStats(); populateSidebar();
-  // Show confirmation in ws view
+  // Also persist in wsData so the entry stays visible in the weekly sync column
+  var week = wsData.weeks[wsCurrentWeek];
+  if (week) {
+    if (!week.items[bkt]) week.items[bkt] = {nimish:[], priyanka:[]};
+    week.items[bkt][who].push({text:txt, carried:false, isTask:true});
+    saveWs();
+  }
   renderWsView();
   // Brief feedback
   var feedbackEl = document.createElement('div');
