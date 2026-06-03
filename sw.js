@@ -1,4 +1,4 @@
-const CACHE = 'lcc-v3';
+const CACHE = 'lcc-v5';
 const OFFLINE_URL = '/offline.html';
 const STATIC_ASSETS = [
   '/',
@@ -28,7 +28,6 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   const url = e.request.url;
 
-  // Never intercept API calls or external fonts
   if (
     url.includes('api.anthropic.com') ||
     url.includes('supabase.co') ||
@@ -36,7 +35,6 @@ self.addEventListener('fetch', e => {
     url.includes('fonts.gstatic.com')
   ) return;
 
-  // Navigation requests: network-first, fall back to cached index, then offline page
   if (e.request.mode === 'navigate') {
     e.respondWith(
       fetch(e.request)
@@ -54,7 +52,6 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Static assets: stale-while-revalidate
   e.respondWith(
     caches.open(CACHE).then(cache =>
       cache.match(e.request).then(cached => {
@@ -65,5 +62,36 @@ self.addEventListener('fetch', e => {
         return cached || networkFetch || caches.match(OFFLINE_URL);
       })
     )
+  );
+});
+
+// Scheduled notification message from the app
+self.addEventListener('message', e => {
+  if (e.data && e.data.type === 'SCHEDULE_EVENING') {
+    const { msUntil, title, body } = e.data;
+    setTimeout(() => {
+      self.registration.showNotification(title, {
+        body,
+        icon: '/icon-192.png',
+        badge: '/icon-192.png',
+        tag: 'lcc-evening',
+        renotify: false,
+        data: { url: '/?nav=ritual' }
+      });
+    }, msUntil);
+  }
+});
+
+// Tap on notification opens the app at the ritual view
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const target = (e.notification.data && e.notification.data.url) || '/?nav=ritual';
+  e.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      for (const c of list) {
+        if (c.url.includes(self.location.origin)) { c.focus(); return; }
+      }
+      return clients.openWindow(target);
+    })
   );
 });

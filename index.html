@@ -557,6 +557,14 @@ button{cursor:pointer;}
         <input class="set-input" id="geminiModelCustom" placeholder="e.g. gemini-1.5-pro-latest" style="margin-top:6px;display:none;font-family:monospace;font-size:12px;" oninput="saveGeminiModel(this.value)"/>
         <button class="btn btn-sec btn-sm" onclick="detectGeminiModels()" style="margin-top:8px;width:100%;">&#128269; Auto-detect working model</button>
         <div id="detectModelStatus" style="font-size:11px;margin-top:6px;"></div>
+        <div class="set-lbl" style="margin-top:12px;">EVENING REMINDER</div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--tx);">
+            <input type="checkbox" id="notifToggle" onchange="toggleEveningNotif(this.checked)" style="width:16px;height:16px;accent-color:var(--ac);cursor:pointer;"/>
+            Notify me at evening time each day
+          </label>
+        </div>
+        <div id="notifStatus" style="font-size:11px;color:var(--mu);margin-top:4px;"></div>
       </div>
       <div class="card">
         <div class="slabel">&#127912; SKIN</div>
@@ -597,7 +605,9 @@ button{cursor:pointer;}
       <div class="card">
         <div class="slabel">DATA &amp; BACKUP</div>
         <div style="font-size:13px;color:var(--mu);margin-bottom:12px;line-height:1.6;">Data syncs to Supabase cloud &#8212; available on all devices.</div>
+        <div id="syncHealthDiv" style="font-size:12px;color:var(--mu);margin-bottom:10px;"></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-sec btn-sm" onclick="forceSyncNow()">&#8635; Sync Now</button>
           <button class="btn btn-sec btn-sm" onclick="exportData()">&#11015; Export JSON</button>
           <button class="btn btn-sec btn-sm" onclick="clearData()">&#8634; Reset</button>
         </div>
@@ -1148,7 +1158,47 @@ async function sendPanelChat() {
   if (sendBtn) sendBtn.disabled = false;
 }
 
-//  OFFLINE 
+//  OFFLINE
+async function scheduleEveningReminder(reg) {
+  if (!reg) return;
+  if (!D || !D.settings || D.settings.eveningNotif === false) return;
+  if (Notification.permission === 'default') {
+    var p = await Notification.requestPermission();
+    if (p !== 'granted') return;
+  }
+  if (Notification.permission !== 'granted') return;
+  var today = new Date().toDateString();
+  if (localStorage.getItem('lcc-notif-sched') === today) return;
+  localStorage.setItem('lcc-notif-sched', today);
+  var timeStr = (D.settings && D.settings.eveningTime) || '20:00';
+  var parts = timeStr.split(':');
+  var target = new Date();
+  target.setHours(parseInt(parts[0]), parseInt(parts[1]), 0, 0);
+  var msUntil = target - Date.now();
+  if (msUntil <= 0) return;
+  var sw = reg.active || reg.installing || reg.waiting;
+  if (!sw) return;
+  sw.postMessage({
+    type: 'SCHEDULE_EVENING',
+    msUntil: msUntil,
+    title: '🌙 Evening Ritual — ' + new Date().toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'}),
+    body: 'Time to reflect on today. How did it go?'
+  });
+}
+function toggleEveningNotif(checked) {
+  if (!D || !D.settings) return;
+  D.settings.eveningNotif = checked;
+  saveData();
+  var st = el('notifStatus');
+  if (checked) {
+    localStorage.removeItem('lcc-notif-sched');
+    navigator.serviceWorker.ready.then(function(reg) { scheduleEveningReminder(reg); });
+    var timeStr = (D.settings && D.settings.eveningTime) || '20:00';
+    if (st) { st.textContent = '✓ Reminder set for ' + timeStr; st.style.color = '#10B981'; }
+  } else {
+    if (st) { st.textContent = 'Reminders off'; st.style.color = 'var(--mu)'; }
+  }
+}
 function initOffline() {
   function goOffline() { var b = el('offlineBanner'); if (b) b.style.transform = 'translateY(0)'; }
   function goOnline() {
@@ -1659,6 +1709,20 @@ function populateSettings() {
     if (knownModels.includes(storedModel)) { gmSel.value = storedModel; if (gmCust) gmCust.style.display='none'; }
     else { gmSel.value = 'custom'; if (gmCust) { gmCust.style.display='block'; gmCust.value=storedModel; } }
   }
+  var nt = el('notifToggle'); var ns = el('notifStatus');
+  if (nt) nt.checked = D.settings.eveningNotif !== false;
+  if (ns) {
+    var enabled = D.settings.eveningNotif !== false;
+    var permOk = (typeof Notification !== 'undefined') && Notification.permission === 'granted';
+    if (!enabled) { ns.textContent = 'Reminders off'; ns.style.color = 'var(--mu)'; }
+    else if (!permOk) { ns.textContent = '⚠️ Allow notifications in browser to activate'; ns.style.color = '#F59E0B'; }
+    else { ns.textContent = '✓ Reminder set for ' + ((D.settings && D.settings.eveningTime) || '20:00'); ns.style.color = '#10B981'; }
+  }
+  var sdiv = el('syncHealthDiv');
+  if (sdiv && !sdiv.textContent) {
+    var syncTxt = document.querySelector('.sync-txt');
+    if (syncTxt) { sdiv.textContent = 'Last: ' + syncTxt.textContent; sdiv.style.color = syncTxt.textContent === 'Synced' ? '#10B981' : '#F59E0B'; }
+  }
   renderSkinGrid(); renderLayoutGrid();
 }
 function saveSettings() { var sn = el('setName'); if (sn&&sn.value.trim()) D.settings.name=sn.value.trim(); saveData(); alert('Settings saved!'); }
@@ -1797,7 +1861,11 @@ function bootApp() {
   addPanelMsg('assistant', 'Good to see you, ' + (currentUser==='priyanka'?'Priyanka':'Dr. Nimish') + '! How can I help today?');
   sbLoad(); applyEmotionMode(); setTimeout(checkWeeklyWins, 2000);
   initOffline(); initFabScroll();
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(function(){});
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').then(function(reg) {
+      scheduleEveningReminder(reg);
+    }).catch(function(){});
+  }
 }
 function showApp() {
   var sp = el('splash'); if (sp) sp.style.display = 'none';
@@ -1832,31 +1900,48 @@ function saveWs() {
 async function sbSave() {
   if (currentUser === 'guest') return;
   try {
-    var payload = {id:currentUser, tasks:D.tasks, buckets:D.buckets, moods:D.moods, settings:D.settings, ws_buckets:D.wsBuckets, updated_at:new Date().toISOString()};
+    // Store wsBuckets inside settings to avoid needing a separate DB column
+    var settingsToSave = Object.assign({}, D.settings, {_wsBuckets: D.wsBuckets});
+    var payload = {id:currentUser, tasks:D.tasks, buckets:D.buckets, moods:D.moods, settings:settingsToSave, updated_at:new Date().toISOString()};
     setSyncStatus('saving');
     var res = await fetch(SB_URL+'/rest/v1/lcc_data', {method:'POST', headers:{'Content-Type':'application/json',apikey:SB_ANON,Authorization:'Bearer '+SB_ANON,Prefer:'resolution=merge-duplicates,return=minimal'}, body:JSON.stringify(payload)});
-    if (res.ok) setSyncStatus('saved'); else setSyncStatus('error');
-  } catch(e) { setSyncStatus('local'); }
+    if (res.ok) { setSyncStatus('saved'); }
+    else {
+      var errBody = ''; try { errBody = JSON.stringify(await res.json()); } catch(e2) {}
+      console.error('SB save failed', res.status, errBody);
+      setSyncStatus('error', res.status + (errBody ? ': ' + errBody : ''));
+    }
+  } catch(e) { console.error('SB save error:', e); setSyncStatus('local'); }
 }
 async function sbLoad() {
   if (currentUser === 'guest') return;
   try {
     var res = await Promise.race([
       fetch(SB_URL+'/rest/v1/lcc_data?id=eq.'+currentUser, {headers:{apikey:SB_ANON,Authorization:'Bearer '+SB_ANON}}),
-      new Promise(function(_,rej){setTimeout(function(){rej(new Error('timeout'));},5000);})
+      new Promise(function(_,rej){setTimeout(function(){rej(new Error('timeout'));},8000);})
     ]);
     if (res.ok) {
       var arr = await res.json();
       if (arr && arr[0]) {
         var remote = arr[0];
-        if (remote.tasks && remote.tasks.length) D.tasks = remote.tasks;
-        if (remote.buckets && remote.buckets.length) D.buckets = remote.buckets;
+        if (Array.isArray(remote.tasks)) D.tasks = remote.tasks;
+        if (Array.isArray(remote.buckets) && remote.buckets.length) D.buckets = remote.buckets;
         if (remote.moods) D.moods = remote.moods;
-        if (remote.settings && Object.keys(remote.settings).length) D.settings = Object.assign(D.settings, remote.settings);
+        if (remote.settings && Object.keys(remote.settings).length) {
+          var _wb = remote.settings._wsBuckets;
+          var cleanSettings = Object.assign({}, remote.settings);
+          delete cleanSettings._wsBuckets;
+          D.settings = Object.assign({}, D.settings, cleanSettings);
+          if (_wb && _wb.length) D.wsBuckets = _wb;
+        }
+        // Legacy: ws_buckets as a top-level column (backward compat)
         if (remote.ws_buckets && remote.ws_buckets.length) D.wsBuckets = remote.ws_buckets;
         localStorage.setItem(STORAGE_KEY, JSON.stringify(D));
         renderBoard(); renderSidebarStats(); populateSidebar(); setSyncStatus('saved');
-      }
+      } else if (arr && arr.length === 0) { setSyncStatus('saved'); }
+    } else {
+      var loadErr = ''; try { loadErr = JSON.stringify(await res.json()); } catch(e2) {}
+      console.error('SB load failed', res.status, loadErr);
     }
   } catch(e) { console.warn('SB load:', e.message); }
   try {
@@ -1876,10 +1961,29 @@ async function sbSaveWs() {
     });
   } catch(e) {}
 }
-function setSyncStatus(status) {
+async function forceSyncNow() {
+  var div = el('syncHealthDiv');
+  if (div) { div.textContent = '⏳ Syncing...'; div.style.color = 'var(--mu)'; }
+  setSyncStatus('saving');
+  try {
+    await sbSave();
+    await sbLoad();
+    if (div) { div.textContent = '✓ Synced at ' + new Date().toLocaleTimeString(); div.style.color = '#10B981'; }
+  } catch(e) {
+    if (div) { div.textContent = '⚠️ Failed: ' + e.message; div.style.color = '#EF4444'; }
+  }
+}
+function setSyncStatus(status, detail) {
   var dot = document.querySelector('.sync-dot'); var txt = document.querySelector('.sync-txt');
   if (dot) { dot.className='sync-dot'; if(status==='saving')dot.classList.add('saving'); else if(status==='error')dot.classList.add('error'); }
-  if (txt) txt.textContent = status==='saved'?'Synced':status==='saving'?'Saving...':status==='error'?'Sync error':'Local only';
+  var label = status==='saved'?'Synced':status==='saving'?'Saving...':status==='error'?'Sync error':'Local only';
+  if (txt) { txt.textContent = label; if (detail) txt.title = detail; }
+  if (status === 'error') {
+    var t = el('onlineToast');
+    if (!t) { t = document.createElement('div'); t.id='onlineToast'; t.style.cssText='position:fixed;top:16px;left:50%;transform:translateX(-50%);padding:8px 18px;border-radius:20px;font-size:13px;font-weight:600;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;'; document.body.appendChild(t); }
+    t.textContent = '⚠️ Sync failed — check Settings'; t.style.background='#EF4444'; t.style.color='#fff';
+    t.style.opacity='1'; setTimeout(function(){t.style.opacity='0';},4000);
+  }
 }
 function saveSession(user) { localStorage.setItem(SESSION_KEY, JSON.stringify({user:user, expiry:Date.now()+7*86400000})); }
 function checkSession() { try { var s=JSON.parse(localStorage.getItem(SESSION_KEY)||'null'); if(s&&s.expiry>Date.now())return s.user; } catch(e) {} return null; }
