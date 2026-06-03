@@ -2053,48 +2053,68 @@ function getStreak(habId) {
   return streak;
 }
 function renderHabits() {
-  var today = todayKey();
-  var dl = el('habDateLbl');
-  if (dl) dl.textContent = new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'});
-  var myHabits = (D.habits||[]).filter(function(h){ return !h.owner || h.owner===currentUser; });
-  var log = D.habitLog[today] || {};
-  var done = myHabits.filter(function(h){return log[h.id];}).length;
-  var pct = myHabits.length ? Math.round(done/myHabits.length*100) : 0;
-  var pf = el('habProgFill'); if (pf) pf.style.width = pct+'%';
-  var pt = el('habProgTxt');
-  if (pt) pt.textContent = myHabits.length ? done+' / '+myHabits.length+' done today ('+pct+'%)' : 'No habits yet — tap + Add to get started';
-  var list = el('habList'); if (!list) return;
-  if (!myHabits.length) { list.innerHTML = ''; return; }
-  var hist7 = habitDateRange(7);
-  list.innerHTML = myHabits.map(function(h) {
-    var isDone = !!log[h.id];
-    var streak = getStreak(h.id);
-    var dots = hist7.map(function(k) {
-      var isToday = k===today;
-      var checked = D.habitLog[k] && D.habitLog[k][h.id];
-      return '<div class="hab-dot'+(checked?' done':'')+(isToday?' today-dot':'')+'" title="'+k+'"></div>';
+  try {
+    if (!D) return;
+    if (!D.habits) D.habits = [];
+    if (!D.habitLog) D.habitLog = {};
+    if (!D.settings) D.settings = {};
+    var today = todayKey();
+    var dl = el('habDateLbl');
+    if (dl) {
+      try { dl.textContent = new Date().toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long'}); }
+      catch(e2) { dl.textContent = new Date().toDateString(); }
+    }
+    var myHabits = D.habits.filter(function(h){ return !h.owner || h.owner===currentUser; });
+    var log = D.habitLog[today] || {};
+    var done = myHabits.filter(function(h){return log[h.id];}).length;
+    var pct = myHabits.length ? Math.round(done/myHabits.length*100) : 0;
+    var pf = el('habProgFill'); if (pf) pf.style.width = pct+'%';
+    var pt = el('habProgTxt');
+    if (pt) {
+      if (!myHabits.length) {
+        pt.textContent = 'No habits yet — tap + Add above to get started.';
+        pt.style.cssText = 'font-size:15px;color:var(--mu);margin-top:4px;font-weight:500;';
+      } else {
+        pt.textContent = done+' / '+myHabits.length+' done today ('+pct+'%)';
+        pt.style.cssText = 'font-size:12px;color:var(--mu);margin-top:2px;';
+      }
+    }
+    // Update notification toggle
+    var nt = el('habNotifToggle'); var ns = el('habNotifStatus'); var ntime = el('habNotifTime');
+    if (nt) nt.checked = D.settings.habitNotif === true;
+    if (ntime) ntime.value = (D.settings.habitNotifTime || '21:00');
+    if (ns) {
+      var enabled = D.settings.habitNotif === true;
+      var permOk = (typeof Notification !== 'undefined') && Notification.permission === 'granted';
+      if (!enabled) { ns.textContent = 'Reminders off'; ns.style.color='var(--mu)'; }
+      else if (!permOk) { ns.textContent = '⚠️ Allow notifications in browser to activate'; ns.style.color='#F59E0B'; }
+      else { ns.textContent = '✓ Reminder set for '+(D.settings.habitNotifTime||'21:00'); ns.style.color='#10B981'; }
+    }
+    var list = el('habList'); if (!list) return;
+    if (!myHabits.length) { list.innerHTML = ''; return; }
+    var hist7 = habitDateRange(7);
+    list.innerHTML = myHabits.map(function(h) {
+      var isDone = !!log[h.id];
+      var streak = getStreak(h.id);
+      var dots = hist7.map(function(k) {
+        var checked = D.habitLog[k] && D.habitLog[k][h.id];
+        return '<div class="hab-dot'+(checked?' done':'')+'" title="'+k+'"></div>';
+      }).join('');
+      return '<div class="hab-card'+(isDone?' done':'')+'" onclick="toggleHabit(\''+h.id+'\')" style="border-color:'+(isDone?h.color||'var(--ac)':'var(--bd)')+';">'
+        + '<div class="hab-check">&#10003;</div>'
+        + '<div class="hab-icon">'+h.icon+'</div>'
+        + '<div class="hab-name">'+h.name+'</div>'
+        + '<div class="hab-meta">'
+          + (streak>0 ? '<div class="hab-streak">&#128293; '+streak+'d</div>' : '<div class="hab-streak" style="color:var(--mu);">Start!</div>')
+          + '<div class="hab-hist">'+dots+'</div>'
+        + '</div>'
+        + '<button onclick="event.stopPropagation();deleteHabit(\''+h.id+'\')" style="background:none;border:none;color:var(--mu);font-size:16px;cursor:pointer;padding:4px 6px;margin-left:4px;" title="Delete">&#215;</button>'
+        + '</div>';
     }).join('');
-    return '<div class="hab-card'+(isDone?' done':'')+'" onclick="toggleHabit(\''+h.id+'\')" style="border-color:'+(isDone?h.color||'var(--ac)':'var(--bd)')+';">'
-      + '<div class="hab-check">&#10003;</div>'
-      + '<div class="hab-icon">'+h.icon+'</div>'
-      + '<div class="hab-name">'+h.name+'</div>'
-      + '<div class="hab-meta">'
-        + (streak>0 ? '<div class="hab-streak">&#128293; '+streak+'d</div>' : '<div class="hab-streak" style="color:var(--mu);">Start!</div>')
-        + '<div class="hab-hist">'+dots+'</div>'
-      + '</div>'
-      + '<button onclick="event.stopPropagation();deleteHabit(\''+h.id+'\')" style="background:none;border:none;color:var(--mu);font-size:16px;cursor:pointer;padding:4px 6px;margin-left:4px;" title="Delete">&#215;</button>'
-      + '</div>';
-  }).join('');
-  // Update notification toggle state
-  var nt = el('habNotifToggle'); var ns = el('habNotifStatus'); var ntime = el('habNotifTime');
-  if (nt) nt.checked = D.settings.habitNotif === true;
-  if (ntime) ntime.value = (D.settings.habitNotifTime || '21:00');
-  if (ns) {
-    var enabled = D.settings.habitNotif === true;
-    var permOk = (typeof Notification !== 'undefined') && Notification.permission === 'granted';
-    if (!enabled) { ns.textContent = 'Reminders off'; ns.style.color='var(--mu)'; }
-    else if (!permOk) { ns.textContent = '⚠️ Allow notifications in browser to activate'; ns.style.color='#F59E0B'; }
-    else { ns.textContent = '✓ Reminder set for '+(D.settings.habitNotifTime||'21:00'); ns.style.color='#10B981'; }
+  } catch(err) {
+    console.error('renderHabits error:', err);
+    var list = el('habList');
+    if (list) list.innerHTML = '<div style="color:#EF4444;padding:12px;font-size:13px;">Error loading habits. Try refreshing. ('+err.message+')</div>';
   }
 }
 function toggleHabit(habId) {
