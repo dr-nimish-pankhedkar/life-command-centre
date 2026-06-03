@@ -2002,13 +2002,29 @@ async function sbLoad() {
           delete cleanSettings._wsBuckets; delete cleanSettings._habits; delete cleanSettings._habitLog;
           D.settings = Object.assign({}, D.settings, cleanSettings);
           if (_wb && _wb.length) D.wsBuckets = _wb;
-          if (Array.isArray(_hab)) D.habits = _hab;
-          if (_habLog && typeof _habLog === 'object') D.habitLog = _habLog;
+          // Merge habit definitions by id (keep habits from both sides)
+          if (Array.isArray(_hab)) {
+            var localHabIds = (D.habits||[]).map(function(h){return h.id;});
+            _hab.forEach(function(rh) {
+              var li = localHabIds.indexOf(rh.id);
+              if (li === -1) D.habits.push(rh); // new from remote
+              else D.habits[li] = rh;            // update existing with remote version
+            });
+          }
+          // Merge habitLog by date: union per-day checks
+          if (_habLog && typeof _habLog === 'object') {
+            Object.keys(_habLog).forEach(function(dt) {
+              if (!D.habitLog[dt]) D.habitLog[dt] = {};
+              Object.assign(D.habitLog[dt], _habLog[dt]);
+            });
+          }
         }
         // Legacy: ws_buckets as a top-level column (backward compat)
         if (remote.ws_buckets && remote.ws_buckets.length) D.wsBuckets = remote.ws_buckets;
         localStorage.setItem(STORAGE_KEY, JSON.stringify(D));
         renderBoard(); renderSidebarStats(); populateSidebar(); setSyncStatus('saved');
+        var habView = el('view-habits');
+        if (habView && habView.classList.contains('active')) renderHabits();
       } else if (arr && arr.length === 0) { setSyncStatus('saved'); }
     } else {
       var loadErr = ''; try { loadErr = JSON.stringify(await res.json()); } catch(e2) {}
