@@ -2019,7 +2019,43 @@ async function sbLoad() {
     var wr = await fetch(SB_URL+'/rest/v1/lcc_weekly?id=eq.nimish', {headers:{apikey:SB_ANON,Authorization:'Bearer '+SB_ANON}});
     if (wr.ok) {
       var warr = await wr.json();
-      if (warr && warr[0] && warr[0].data) wsData = warr[0].data;
+      if (warr && warr[0] && warr[0].data) {
+        var remoteWs = warr[0].data;
+        // Merge remote weeks into local — never discard local items
+        Object.keys(remoteWs.weeks || {}).forEach(function(wid) {
+          var rw = remoteWs.weeks[wid];
+          if (!wsData.weeks[wid]) {
+            wsData.weeks[wid] = rw;
+          } else {
+            var lw = wsData.weeks[wid];
+            // Merge items per bucket per person (union by text)
+            Object.keys(rw.items || {}).forEach(function(bktId) {
+              var rb = rw.items[bktId] || {};
+              if (!lw.items[bktId]) lw.items[bktId] = {nimish:[], priyanka:[]};
+              ['nimish','priyanka'].forEach(function(who) {
+                var rList = rb[who] || [];
+                var lList = lw.items[bktId][who] || [];
+                rList.forEach(function(ri) {
+                  if (!lList.some(function(li) { return li.text === ri.text; })) lList.push(ri);
+                });
+                lw.items[bktId][who] = lList;
+              });
+            });
+            // Merge actions (union by id)
+            var rActs = rw.actions || [];
+            var lActs = lw.actions || [];
+            rActs.forEach(function(ra) {
+              if (!lActs.some(function(la) { return la.id === ra.id; })) lActs.push(ra);
+            });
+            lw.actions = lActs;
+            if (!lw.summary && rw.summary) lw.summary = rw.summary;
+            if (!lw.closed && rw.closed) lw.closed = rw.closed;
+          }
+        });
+        saveWs();
+        var wsView = el('view-ws');
+        if (wsView && wsView.classList.contains('active')) renderWsView();
+      }
     }
   } catch(e) {}
 }
