@@ -1,81 +1,38 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
-const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY") ?? "";
-const ALLOWED_ORIGINS = [
-  "https://life-command-centre-839a.vercel.app",
-  "http://localhost:3000",
-  "http://localhost:5173",
-];
+const GEMINI_KEY = Deno.env.get("GEMINI_API_KEY") ?? "";
+const cors = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "content-type, authorization",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
 
-function corsHeaders(origin: string) {
-  const allowed = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
-  return {
-    "Access-Control-Allow-Origin": allowed,
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
-  };
-}
-
-serve(async (req) => {
-  const origin = req.headers.get("origin") ?? "";
-  const cors = corsHeaders(origin);
-
-  if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: cors });
-  }
-
-  if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), {
-      status: 405, headers: { ...cors, "Content-Type": "application/json" },
-    });
-  }
-
-  if (!GEMINI_API_KEY) {
-    return new Response(JSON.stringify({ error: "GEMINI_API_KEY not set" }), {
-      status: 500, headers: { ...cors, "Content-Type": "application/json" },
-    });
-  }
-
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   try {
-    const body = await req.json();
-    const { messages = [], systemPrompt = "" } = body;
-
-    // Build Gemini contents array
-    const contents = messages.map((m: { role: string; content: string }) => ({
-      role: m.role === "assistant" ? "model" : "user",
-      parts: [{ text: m.content }],
-    }));
-
-    const payload: Record<string, unknown> = { contents };
-    if (systemPrompt) {
-      payload.systemInstruction = { parts: [{ text: systemPrompt }] };
+    const { prompt, history = [], system = "" } = await req.json();
+    const contents = [];
+    if (system) {
+      contents.push({ role: "user", parts: [{ text: system }] });
+      contents.push({ role: "model", parts: [{ text: "Understood." }] });
     }
-
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+    for (const m of history) {
+      contents.push({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] });
+    }
+    contents.push({ role: "user", parts: [{ text: prompt }] });
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_KEY}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ contents, generationConfig: { maxOutputTokens: 1024, temperature: 0.7 } })
       }
     );
-
-    if (!geminiRes.ok) {
-      const err = await geminiRes.text();
-      return new Response(JSON.stringify({ error: `Gemini error: ${err}` }), {
-        status: 502, headers: { ...cors, "Content-Type": "application/json" },
-      });
-    }
-
-    const data = await geminiRes.json();
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-
-    return new Response(JSON.stringify({ text }), {
-      status: 200, headers: { ...cors, "Content-Type": "application/json" },
-    });
-  } catch (err) {
-    return new Response(JSON.stringify({ error: String(err) }), {
-      status: 500, headers: { ...cors, "Content-Type": "application/json" },
-    });
+    const data = await res.json();
+    if (!res.ok) return new Response(JSON.stringify({ error: data?.error?.message || "Gemini error" }), { status: res.status, headers: { ...cors, "Content-Type": "application/json" } });
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+    return new Response(JSON.stringify({ text }), { headers: { ...cors, "Content-Type": "application/json" } });
+  } catch (e) {
+    return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
   }
 });
