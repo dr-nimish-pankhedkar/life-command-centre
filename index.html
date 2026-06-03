@@ -533,6 +533,13 @@ button{cursor:pointer;}
           <button class="btn btn-sec btn-sm" id="geminiKeyToggle" onclick="toggleGeminiKeyVis()" style="flex-shrink:0;">&#128065;</button>
         </div>
         <div id="geminiKeyStatus" style="font-size:11px;margin-top:6px;"></div>
+        <div class="set-lbl" style="margin-top:12px;">MODEL</div>
+        <select class="set-input" id="geminiModelSel" onchange="saveGeminiModel(this.value)" style="font-size:13px;">
+          <option value="gemini-1.5-flash">gemini-1.5-flash (free tier ✓)</option>
+          <option value="gemini-1.5-flash-8b">gemini-1.5-flash-8b (free tier ✓ fastest)</option>
+          <option value="gemini-2.0-flash">gemini-2.0-flash (paid tier)</option>
+          <option value="gemini-2.0-flash-lite">gemini-2.0-flash-lite (free tier ✓)</option>
+        </select>
       </div>
       <div class="card">
         <div class="slabel">&#127912; SKIN</div>
@@ -599,6 +606,7 @@ const WS_STORAGE='lcc-ws-v1';
 const PW_KEY='lcc-pins';
 const SESSION_KEY='lcc-session';
 const GEMINI_KEY='lcc-gemini-key';
+const GEMINI_MODEL='lcc-gemini-model';
 const PRI_META={P1:{label:'Critical',color:'#EF4444',bg:'#FEF2F2',border:'#FECACA'},P2:{label:'Important',color:'#F59E0B',bg:'#FFFBEB',border:'#FDE68A'},P3:{label:'Someday',color:'#10B981',bg:'#ECFDF5',border:'#A7F3D0'}};
 const DEFAULT_BUCKETS=[{id:'cafe',label:'Cafe',icon:'\u2615',color:'#F59E0B'},{id:'family',label:'Family',icon:'\uD83C\uDFE0',color:'#EC4899'},{id:'health',label:'Health',icon:'\uD83D\uDCAA',color:'#10B981'},{id:'personal',label:'Personal',icon:'\uD83E\uDDE0',color:'#8B5CF6'},{id:'devp',label:'Dev & Learn',icon:'\uD83D\uDCDA',color:'#3B82F6'},{id:'finance',label:'Finance',icon:'\uD83D\uDCB0',color:'#06B6D4'}];
 const DEFAULT_WS_BUCKETS=[{id:'ws_fin',label:'Finance',icon:'\uD83D\uDCB0',color:'#10B981'},{id:'ws_kids',label:'Kids',icon:'\uD83D\uDC76',color:'#EC4899'},{id:'ws_home',label:'Home',icon:'\uD83C\uDFE0',color:'#F59E0B'},{id:'ws_hlth',label:'Health',icon:'\uD83D\uDCAA',color:'#3B82F6'},{id:'ws_dev',label:'Personal Dev',icon:'\uD83D\uDCDA',color:'#8B5CF6'}];
@@ -1589,6 +1597,8 @@ function populateSettings() {
   var storedKey = localStorage.getItem(GEMINI_KEY) || '';
   if (gkIn) gkIn.value = storedKey;
   if (gkSt) { gkSt.textContent = storedKey ? '✓ Key saved — AI features enabled' : 'No key set — AI features disabled'; gkSt.style.color = storedKey ? '#10B981' : '#F59E0B'; }
+  var gmSel = el('geminiModelSel');
+  if (gmSel) gmSel.value = localStorage.getItem(GEMINI_MODEL) || 'gemini-1.5-flash';
   renderSkinGrid(); renderLayoutGrid();
 }
 function saveSettings() { var sn = el('setName'); if (sn&&sn.value.trim()) D.settings.name=sn.value.trim(); saveData(); alert('Settings saved!'); }
@@ -1602,6 +1612,7 @@ function toggleGeminiKeyVis() {
   var inp = el('geminiKeyIn'); if (!inp) return;
   inp.type = inp.type === 'password' ? 'text' : 'password';
 }
+function saveGeminiModel(val) { localStorage.setItem(GEMINI_MODEL, val); }
 function updateBucket(id, key, val) { var b = D.buckets.find(function(bk){return bk.id===id;}); if (b) b[key]=val; saveData(); populateSidebar(); }
 function addBucket() { D.buckets.push({id:'bkt'+Date.now(),label:'New Bucket',icon:'&#128230;',color:'#6366F1'}); saveData(); populateSettings(); populateSidebar(); }
 
@@ -1789,7 +1800,8 @@ async function callAI(prompt, history) {
       contents: contents,
       systemInstruction: {parts:[{text:'You are LCC Assistant, a warm helpful productivity AI for Dr. Nimish Pankhedkar and Priyanka. Keep responses concise and actionable.'}]}
     };
-    var res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + gKey, {
+    var model = localStorage.getItem(GEMINI_MODEL) || 'gemini-1.5-flash';
+    var res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + gKey, {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify(payload)
