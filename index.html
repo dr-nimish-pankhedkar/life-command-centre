@@ -1834,7 +1834,6 @@ function checkSession() { try { var s=JSON.parse(localStorage.getItem(SESSION_KE
 async function callAI(prompt, history) {
   var gKey = localStorage.getItem(GEMINI_KEY) || '';
   if (gKey) {
-    // Direct Gemini API call
     var contents = [];
     if (history && history.length) {
       history.forEach(function(m) {
@@ -1846,15 +1845,38 @@ async function callAI(prompt, history) {
       contents: contents,
       systemInstruction: {parts:[{text:'You are LCC Assistant, a warm helpful productivity AI for Dr. Nimish Pankhedkar and Priyanka. Keep responses concise and actionable.'}]}
     };
-    var model = localStorage.getItem(GEMINI_MODEL) || 'gemini-1.5-flash-latest';
-    var res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + gKey, {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify(payload)
-    });
-    if (!res.ok) { var err = await res.json().catch(function(){return {};}); throw new Error((err.error&&err.error.message) || 'Gemini error ' + res.status); }
-    var data = await res.json();
-    return (data.candidates&&data.candidates[0]&&data.candidates[0].content&&data.candidates[0].content.parts&&data.candidates[0].content.parts[0].text) || '';
+    // Try saved model first, then fallback chain
+    var savedModel = localStorage.getItem(GEMINI_MODEL);
+    var FALLBACKS = ['gemini-1.5-flash-latest','gemini-2.0-flash-lite','gemini-1.5-flash-8b-latest','gemini-2.0-flash','gemini-1.5-pro-latest'];
+    // Clear any bare name (no suffix) that was cached from old versions
+    if (savedModel && /^gemini-\d\.\d-(flash|pro|ultra)$/.test(savedModel)) { localStorage.removeItem(GEMINI_MODEL); savedModel = null; }
+    var modelsToTry = savedModel ? [savedModel].concat(FALLBACKS.filter(function(m){return m!==savedModel;})) : FALLBACKS;
+    var lastErr = '';
+    for (var i = 0; i < modelsToTry.length; i++) {
+      var model = modelsToTry[i];
+      try {
+        var res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + gKey, {
+          method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
+        });
+        if (!res.ok) {
+          var errData = await res.json().catch(function(){return {};});
+          var msg = (errData.error && errData.error.message) || ('HTTP ' + res.status);
+          // Only retry on model-not-found errors, not quota/auth errors
+          if (res.status === 404 || msg.toLowerCase().includes('not found')) { lastErr = msg; continue; }
+          throw new Error(msg);
+        }
+        var data = await res.json();
+        var text = (data.candidates&&data.candidates[0]&&data.candidates[0].content&&data.candidates[0].content.parts&&data.candidates[0].content.parts[0].text) || '';
+        // Save the working model
+        if (model !== savedModel) localStorage.setItem(GEMINI_MODEL, model);
+        return text;
+      } catch(ex) {
+        var exMsg = ex.message || '';
+        if (exMsg.toLowerCase().includes('not found')) { lastErr = exMsg; continue; }
+        throw ex;
+      }
+    }
+    throw new Error('No working Gemini model found. Last error: ' + lastErr);
   }
   // Fallback: Supabase proxy
   var messages = [];

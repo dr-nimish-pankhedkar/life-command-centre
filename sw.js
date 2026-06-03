@@ -1,4 +1,4 @@
-const CACHE = 'lcc-v2';
+const CACHE = 'lcc-v3';
 const OFFLINE_URL = '/offline.html';
 const STATIC_ASSETS = [
   '/',
