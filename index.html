@@ -1255,7 +1255,11 @@ async function runMorning() {
     var mc = el('mResCard'); if (mc) mc.style.display = 'block';
     var mt = el('mRes'); if (mt) mt.textContent = res;
     btn.innerHTML = '&#128336; Run Again';
-  } catch(ex) { btn.innerHTML = '&#9728;&#65039; Generate Morning Briefing'; }
+  } catch(ex) {
+    var mc2 = el('mResCard'); if (mc2) mc2.style.display = 'block';
+    var mt2 = el('mRes'); if (mt2) mt2.textContent = '⚠️ AI unavailable: ' + (ex.message || 'check console');
+    btn.innerHTML = '&#9728;&#65039; Generate Morning Briefing';
+  }
   btn.disabled = false;
 }
 async function runEvening() {
@@ -1268,7 +1272,11 @@ async function runEvening() {
     var ec = el('eResCard'); if (ec) ec.style.display = 'block';
     var et = el('eRes'); if (et) et.textContent = res;
     btn.innerHTML = '&#9889; Reflect Again';
-  } catch(ex) { btn.innerHTML = '&#127769; Generate Evening Review'; }
+  } catch(ex) {
+    var ec2 = el('eResCard'); if (ec2) ec2.style.display = 'block';
+    var et2 = el('eRes'); if (et2) et2.textContent = '⚠️ AI unavailable: ' + (ex.message || 'check console');
+    btn.innerHTML = '&#127769; Generate Evening Review';
+  }
   btn.disabled = false;
 }
 
