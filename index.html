@@ -364,7 +364,7 @@ button{cursor:pointer;}
     <label class="lock-remember"><input type="checkbox" id="lockRem" checked/> Remember me for 7 days</label>
     <button class="lock-setpw" onclick="showSetPin()">Set / Change PIN</button>
     <button id="whoGuest" onclick="selectWho('guest')" style="margin-top:10px;width:100%;padding:10px;border:1.5px dashed #C4A882;border-radius:12px;background:transparent;color:#8B6B50;font-size:13px;font-weight:700;cursor:pointer;font-family:Nunito,sans-serif;">&#128100; Try as Guest (Demo)</button>
-    <div style="margin-top:16px;font-size:10px;color:#C4A882;text-align:center;">&copy; 2026 Dr. Nimish Pankhedkar</div>
+    <div data-copyright style="margin-top:16px;font-size:10px;color:#C4A882;text-align:center;">&copy; 2026 Dr. Nimish Pankhedkar</div>
   </div>
 </div>
 <div class="lock-screen" id="setPinScreen" style="display:none">
@@ -715,9 +715,30 @@ button{cursor:pointer;}
 </div>
 <script>
 
-const SB_URL='https://himfurxmsiemhqzhsqpm.supabase.co';
-const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhpbWZ1cnhtc2llbWhxemhzcXBtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3OTM4NjAsImV4cCI6MjA5NTM2OTg2MH0.eaMiLYHi1-HhSMSdyIYUoh5UCwnnY7F25DKXJeU_7Ys';
-const SB_PUB='sb_publishable_9EY8iCKrzA9wXUJG3aqt3w_Dv90f8HG';
+/* ── SETUP: edit only this block for a new user ── */
+const CFG = {
+  u1:      'nimish',
+  u1Name:  'Dr. Nimish',
+  u1Init:  'N',
+  u1Emoji: '👨‍💼',
+  u1Color: '#FF6B35',
+  u2:      'priyanka',
+  u2Name:  'Priyanka',
+  u2Init:  'P',
+  u2Emoji: '👩',
+  u2Color: '#FF6B9D',
+  solo:    false,
+  copyright: 'Dr. Nimish Pankhedkar',
+  aiCtx: 'You are a personal productivity assistant for Dr. Nimish Pankhedkar. Chemical Engineer (VIT Pune), MTech+PhD+PostDoc from IIT Bombay, Sr Data Scientist at Ingenero Technologies (WFH Nashik), father to a young son, co-founded a cafe. His wife is Priyanka. Core struggles: decision fatigue, anxiety, too many open loops. Voice: calm, direct, warm. No fluff. Plain text only. Under 200 words unless full review.',
+  SB_URL:  'https://himfurxmsiemhqzhsqpm.supabase.co',
+  SB_ANON: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhpbWZ1cnhtc2llbWhxemhzcXBtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3OTM4NjAsImV4cCI6MjA5NTM2OTg2MH0.eaMiLYHi1-HhSMSdyIYUoh5UCwnnY7F25DKXJeU_7Ys',
+  SB_PUB:  'sb_publishable_9EY8iCKrzA9wXUJG3aqt3w_Dv90f8HG',
+};
+/* ── end setup ── */
+
+const SB_URL=CFG.SB_URL;
+const SB_ANON=CFG.SB_ANON;
+const SB_PUB=CFG.SB_PUB;
 const STORAGE_KEY='lcc-v4';
 const WS_STORAGE='lcc-ws-v1';
 const PW_KEY='lcc-pins';
@@ -727,8 +748,8 @@ const GEMINI_MODEL='lcc-gemini-model';
 const PRI_META={P1:{label:'Critical',color:'#EF4444',bg:'#FEF2F2',border:'#FECACA'},P2:{label:'Important',color:'#F59E0B',bg:'#FFFBEB',border:'#FDE68A'},P3:{label:'Someday',color:'#10B981',bg:'#ECFDF5',border:'#A7F3D0'}};
 const DEFAULT_BUCKETS=[{id:'cafe',label:'Cafe',icon:'\u2615',color:'#F59E0B'},{id:'family',label:'Family',icon:'\uD83C\uDFE0',color:'#EC4899'},{id:'health',label:'Health',icon:'\uD83D\uDCAA',color:'#10B981'},{id:'personal',label:'Personal',icon:'\uD83E\uDDE0',color:'#8B5CF6'},{id:'devp',label:'Dev & Learn',icon:'\uD83D\uDCDA',color:'#3B82F6'},{id:'finance',label:'Finance',icon:'\uD83D\uDCB0',color:'#06B6D4'}];
 const DEFAULT_WS_BUCKETS=[{id:'ws_fin',label:'Finance',icon:'\uD83D\uDCB0',color:'#10B981'},{id:'ws_kids',label:'Kids',icon:'\uD83D\uDC76',color:'#EC4899'},{id:'ws_home',label:'Home',icon:'\uD83C\uDFE0',color:'#F59E0B'},{id:'ws_hlth',label:'Health',icon:'\uD83D\uDCAA',color:'#3B82F6'},{id:'ws_dev',label:'Personal Dev',icon:'\uD83D\uDCDA',color:'#8B5CF6'}];
-const DEFAULT_DATA={tasks:[{id:1,text:'Check cafe weekly stock',bucket:'cafe',priority:'P2',done:false,created:Date.now()},{id:2,text:"Schedule son's next checkup",bucket:'family',priority:'P2',done:false,created:Date.now()},{id:3,text:'30 min walk or workout',bucket:'health',priority:'P2',done:false,created:Date.now()},{id:4,text:'Read one paper or chapter',bucket:'devp',priority:'P3',done:false,created:Date.now()}],buckets:DEFAULT_BUCKETS,moods:[],settings:{name:'Dr. Nimish',morningTime:'07:00',eveningTime:'20:00'},wsBuckets:DEFAULT_WS_BUCKETS};
-const SYSTEM='You are a personal productivity assistant for Dr. Nimish Pankhedkar. Chemical Engineer (VIT Pune), MTech+PhD+PostDoc from IIT Bombay, Sr Data Scientist at Ingenero Technologies (WFH Nashik), father to a young son, co-founded a cafe. His wife is Priyanka. Core struggles: decision fatigue, anxiety, too many open loops. Voice: calm, direct, warm. No fluff. Plain text only. Under 200 words unless full review.';
+const DEFAULT_DATA={tasks:[{id:1,text:'Check cafe weekly stock',bucket:'cafe',priority:'P2',done:false,created:Date.now()},{id:2,text:"Schedule son's next checkup",bucket:'family',priority:'P2',done:false,created:Date.now()},{id:3,text:'30 min walk or workout',bucket:'health',priority:'P2',done:false,created:Date.now()},{id:4,text:'Read one paper or chapter',bucket:'devp',priority:'P3',done:false,created:Date.now()}],buckets:DEFAULT_BUCKETS,moods:[],settings:{name:CFG.u1Name,morningTime:'07:00',eveningTime:'20:00'},wsBuckets:DEFAULT_WS_BUCKETS};
+const SYSTEM=CFG.aiCtx;
 const SKINS=[{id:'cosmos',name:'Cosmos',tag:'\uD83C\uDF0C Deep & Mysterious',sb:'#302B63',accent:'#7C3AED'},{id:'aurora',name:'Aurora',tag:'\uD83C\uDF3F Fresh & Natural',sb:'#065F46',accent:'#059669'},{id:'sunset',name:'Sunset',tag:'\uD83C\uDF05 Warm & Energetic',sb:'#991B1B',accent:'#D97706'},{id:'ocean',name:'Ocean',tag:'\uD83C\uDF0A Calm & Professional',sb:'#075985',accent:'#0284C7'},{id:'sakura',name:'Sakura',tag:'\uD83C\uDF38 Soft & Elegant',sb:'#9D174D',accent:'#DB2777'},{id:'midnight',name:'Midnight',tag:'\uD83C\uDF19 Dark & Focused',sb:'#0F172A',accent:'#38BDF8'},{id:'lavender',name:'Lavender',tag:'\uD83D\uDC9C Dreamy & Creative',sb:'#4C1D95',accent:'#7C3AED'},{id:'slate',name:'Slate',tag:'\u26A1 Sharp & Minimal',sb:'#1E293B',accent:'#0EA5E9'}];
 const LAYOUTS=[{id:'clean',name:'Clean List',desc:'Polished rows \u2014 perfect balance',icon:'\u2728'},{id:'compact',name:'Compact List',desc:'Dense rows \u2014 see more at once',icon:'\uD83D\uDCCB'},{id:'kanban',name:'Kanban Grid',desc:'2-column grid by bucket',icon:'\uD83D\uDCCA'},{id:'timeline',name:'Timeline',desc:'Grouped by Today / This Week',icon:'\uD83D\uDCC5'}];
 const SKIN_KEY='lcc-skins';
@@ -738,7 +759,7 @@ const LAYOUT_KEY='lcc-layouts';
 // State variables
 var D = null;
 var wsData = {weeks: {}};
-var currentUser = 'nimish';
+var currentUser = CFG.u1;
 var editingTaskId = null;
 var activeBucket = 'all';
 var currentSort = 'priority';
@@ -892,7 +913,7 @@ function renderGreeting() {
   var ge = el('greetingCard');
   if (!ge || !D) return;
   var h = new Date().getHours();
-  var n = currentUser === 'nimish' ? 'Dr. Nimish' : currentUser === 'guest' ? 'Guest' : 'Priyanka';
+  var n = currentUser === CFG.u1 ? CFG.u1Name : currentUser === 'guest' ? 'Guest' : CFG.u2Name;
   var g = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
   var pending = D.tasks.filter(function(t) { return !t.done && (!t.owner || t.owner === currentUser); }).length;
   var p1 = D.tasks.filter(function(t) { return !t.done && t.priority === 'P1' && (!t.owner || t.owner === currentUser); }).length;
@@ -944,7 +965,7 @@ function targetBadge(t) {
 function tSwipeRowHTML(t, isDone) {
   var b = D.buckets.find(function(bk) { return bk.id === t.bucket; }) || {icon:'&#8226;', label: t.bucket || '', color:'#C4A882'};
   var m = PRI_META[t.priority] || PRI_META['P2'];
-  var ownerBorder = t.owner === 'nimish' ? '#FF6B35' : t.owner === 'priyanka' ? '#FF6B9D' : t.owner === 'guest' ? '#2ED573' : t.owner === 'joint' ? '#A55EEA' : '#F0E0D0';
+  var ownerBorder = t.owner === CFG.u1 ? CFG.u1Color : t.owner === CFG.u2 ? CFG.u2Color : t.owner === 'guest' ? '#2ED573' : t.owner === 'joint' ? '#A55EEA' : '#F0E0D0';
   var txtColor = isDone ? '#C4A882' : '#1C0F06';
   var txtDec = isDone ? 'text-decoration:line-through;' : '';
   return '<div class="task-swipe-wrap" id="tswipe-' + t.id + '">'
@@ -1256,7 +1277,7 @@ function toggleChatPanel() {
     panel.style.transform = 'translateY(0)';
     if (!panelHistory.length) {
       var h = new Date().getHours();
-      var n = currentUser === 'nimish' ? 'Dr. Nimish' : currentUser === 'guest' ? 'Guest' : 'Priyanka';
+      var n = currentUser === CFG.u1 ? CFG.u1Name : currentUser === 'guest' ? 'Guest' : CFG.u2Name;
       var g = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
       addPanelMsg('assistant', g + ', ' + n + '! How can I help today?');
     }
@@ -1272,7 +1293,7 @@ function addPanelMsg(role, content) {
   row.style.cssText = 'display:flex;gap:8px;align-items:flex-start;' + (role==='user'?'flex-direction:row-reverse;':'');
   var av = document.createElement('div');
   av.style.cssText = 'width:28px;height:28px;border-radius:8px;background:' + (role==='user'?'#FF6B35':'#F0E0D0') + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;font-weight:700;color:' + (role==='user'?'#fff':'#8B6B50') + ';';
-  av.textContent = role === 'user' ? (currentUser === 'nimish' ? 'N' : 'P') : 'AI';
+  av.textContent = role === 'user' ? (currentUser === CFG.u1 ? CFG.u1Init : CFG.u2Init) : 'AI';
   var bubble = document.createElement('div');
   bubble.style.cssText = 'max-width:80%;padding:8px 12px;border-radius:' + (role==='user'?'14px 4px 14px 14px':'4px 14px 14px 14px') + ';background:' + (role==='user'?'linear-gradient(135deg,#FF6B35,#FF8C42)':'#F8F4F0') + ';color:' + (role==='user'?'#fff':'#1C0F06') + ';font-size:13px;line-height:1.5;';
   bubble.textContent = content;
@@ -1509,7 +1530,7 @@ async function runMorning() {
   var otherBlock = otherP1.length ? '\nOther urgent P1 tasks:\n'+otherP1.map(fmtTask).join('\n') : '';
 
   var prompt =
-    'Morning briefing for Dr. Nimish.\n'+
+    'Morning briefing for '+CFG.u1Name+'.\n'+
     'Mood: '+mood+'\n'+
     'Focus area: '+focusLabel+'\n'+
     'Mode: '+modeDesc+'\n'+
@@ -1571,13 +1592,13 @@ function getWeekDates(weekId) {
 function initWsWeek(weekId) {
   if (!wsData.weeks[weekId]) {
     wsData.weeks[weekId] = {items:{}, actions:[], dates:getWeekDates(weekId), closed:false, summary:''};
-    D.wsBuckets.forEach(function(b) { wsData.weeks[weekId].items[b.id] = {nimish:[], priyanka:[]}; });
+    D.wsBuckets.forEach(function(b) { var o={}; o[CFG.u1]=[]; if(!CFG.solo)o[CFG.u2]=[]; wsData.weeks[weekId].items[b.id]=o; });
     saveWs();
   }
 }
 function wsColHTML(bucketId, who, items, isClosed) {
-  var dotColor = who === 'nimish' ? '#FF6B35' : '#FF6B9D';
-  var label = who === 'nimish' ? 'NIMISH' : 'PRIYANKA';
+  var dotColor = who === CFG.u1 ? CFG.u1Color : CFG.u2Color;
+  var label = (who === CFG.u1 ? CFG.u1Name : CFG.u2Name).toUpperCase();
   var html = '<div class="ws-col"><div class="ws-col-hdr" style="border-top:3px solid ' + dotColor + ';background:' + dotColor + '12;">'
     + '<div class="ws-col-dot" style="background:' + dotColor + ';"></div>'
     + '<span class="ws-col-lbl" style="color:' + dotColor + ';">' + label + '</span></div>';
@@ -1615,7 +1636,7 @@ function wsHideActForm(bkt) { var f = el('wsActForm-'+bkt); var b = el('wsActBtn
 function wsAddItem(bkt, who) {
   var inp = el('wsIn-'+bkt+'-'+who); if (!inp) return; var txt = inp.value.trim(); if (!txt) return;
   var week = wsData.weeks[wsCurrentWeek]; if (!week) return;
-  if (!week.items[bkt]) week.items[bkt] = {nimish:[], priyanka:[]};
+  if (!week.items[bkt]) { var _o={}; _o[CFG.u1]=[]; if(!CFG.solo)_o[CFG.u2]=[]; week.items[bkt]=_o; }
   week.items[bkt][who].push({text:txt, carried:false});
   inp.value = ''; wsHideForm(bkt, who); saveWs(); renderWsView();
 }
@@ -1642,7 +1663,7 @@ async function wsAddTask(bkt, who) {
   // Also persist in wsData so the entry stays visible in the weekly sync column
   var week = wsData.weeks[wsCurrentWeek];
   if (week) {
-    if (!week.items[bkt]) week.items[bkt] = {nimish:[], priyanka:[]};
+    if (!week.items[bkt]) { var _o={}; _o[CFG.u1]=[]; if(!CFG.solo)_o[CFG.u2]=[]; week.items[bkt]=_o; }
     week.items[bkt][who].push({text:txt, carried:false, isTask:true});
     saveWs();
   }
@@ -1650,12 +1671,12 @@ async function wsAddTask(bkt, who) {
   // Brief feedback
   var feedbackEl = document.createElement('div');
   feedbackEl.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#A55EEA;color:#fff;padding:8px 20px;border-radius:20px;font-size:13px;font-weight:700;z-index:900;';
-  feedbackEl.textContent = 'Task added to ' + (who === 'nimish' ? 'Nimish' : 'Priyanka') + "'s board";
+  feedbackEl.textContent = 'Task added to ' + (who === CFG.u1 ? CFG.u1Name : CFG.u2Name) + "'s board";
   document.body.appendChild(feedbackEl);
   setTimeout(function() { if (feedbackEl.parentNode) feedbackEl.remove(); }, 2500);
 }
 function wsActionHTML(a) {
-  var ownerColor = a.owner === 'nimish' ? '#FF6B35' : a.owner === 'priyanka' ? '#FF6B9D' : '#A55EEA';
+  var ownerColor = a.owner === CFG.u1 ? CFG.u1Color : a.owner === CFG.u2 ? CFG.u2Color : '#A55EEA';
   return '<div class="ws-action-item">'
     + '<input type="checkbox" ' + (a.done?'checked':'') + ' data-aid="' + a.id + '" onchange="wsToggleAction(this.dataset.aid)" style="accent-color:#FF6B35;width:16px;height:16px;cursor:pointer;flex-shrink:0;"/>'
     + '<span style="flex:1;font-size:12px;font-weight:500;color:var(--tx);' + (a.done?'text-decoration:line-through;opacity:.5;':'') + '">' + esc(a.text) + '</span>'
@@ -1665,7 +1686,7 @@ function wsActionHTML(a) {
 }
 function wsAddAction(bkt) {
   var inp = el('wsActIn-'+bkt); if (!inp) return; var txt = inp.value.trim(); if (!txt) return;
-  var ownerEl = el('wsActOwner-'+bkt); var owner = ownerEl ? ownerEl.value : 'nimish';
+  var ownerEl = el('wsActOwner-'+bkt); var owner = ownerEl ? ownerEl.value : CFG.u1;
   var week = wsData.weeks[wsCurrentWeek]; if (!week) return;
   if (!week.actions) week.actions = [];
   week.actions.push({id:String(Date.now()), text:txt, owner:owner, bucket:bkt, done:false, carried:false});
@@ -1680,7 +1701,8 @@ function buildWsActForm(bid) {
   inp.onkeydown = function(e) { if (e.key==='Enter') wsAddAction(bid); };
   var sel = document.createElement('select'); sel.id='wsActOwner-'+bid;
   sel.style.cssText = 'background:#fff;border:1px solid #F0E0D0;border-radius:8px;padding:7px 8px;font-size:12px;color:#1A0F06;outline:none;';
-  ['Nimish','Priyanka','Joint'].forEach(function(l) { var o=document.createElement('option'); o.value=l.toLowerCase(); o.textContent=l; sel.appendChild(o); });
+  var _owners = CFG.solo ? [CFG.u1Name] : [CFG.u1Name, CFG.u2Name, 'Joint'];
+  _owners.forEach(function(l) { var o=document.createElement('option'); o.value=l.toLowerCase()===CFG.u1Name.toLowerCase()?CFG.u1:l.toLowerCase()===CFG.u2Name.toLowerCase()?CFG.u2:l.toLowerCase(); o.textContent=l; sel.appendChild(o); });
   var sb = document.createElement('button'); sb.className='ws-add-save'; sb.textContent='Add'; sb.onclick=function() { wsAddAction(bid); };
   var cb = document.createElement('button'); cb.className='ws-add-cancel'; cb.textContent='\u2715'; cb.onclick=function() { wsHideActForm(bid); };
   form.append(inp, sel, sb, cb);
@@ -1696,17 +1718,19 @@ function renderWsView() {
   var wcs = el('wsCloseBtn'); if (wcs) wcs.textContent = isClosed ? '&#128275; Reopen' : '&#128274; Close Week';
   var wbEl = el('wsBuckets'); if (!wbEl) return;
   wbEl.innerHTML = D.wsBuckets.map(function(b) {
-    var bItems = items[b.id] || {nimish:[], priyanka:[]};
+    var bItems = items[b.id] || {};
+    var u1Items = bItems[CFG.u1] || [];
+    var u2Items = CFG.solo ? [] : (bItems[CFG.u2] || []);
     var bActions = actions.filter(function(a) { return a.bucket===b.id; });
     var actHTML = bActions.length || !isClosed ? ('<div class="ws-actions"><div class="ws-action-hdr">ACTION ITEMS</div>' + bActions.map(wsActionHTML).join('') + (!isClosed?buildWsActForm(b.id):'') + '</div>') : '';
-    var nc = (bItems.nimish||[]).length; var pc = (bItems.priyanka||[]).length;
+    var nc = u1Items.length; var pc = u2Items.length;
     return '<div class="ws-bucket">'
       + '<div class="ws-bkt-hdr" style="border-left:4px solid ' + b.color + ';">'
       + '<span style="font-size:20px;">' + b.icon + '</span>'
       + '<span class="ws-bkt-title">' + b.label + '</span>'
       + '<span class="ws-bkt-count">' + (nc+pc) + ' notes &middot; ' + bActions.length + ' actions</span>'
       + '</div>'
-      + '<div class="ws-cols">' + wsColHTML(b.id,'nimish',bItems.nimish||[],isClosed) + wsColHTML(b.id,'priyanka',bItems.priyanka||[],isClosed) + '</div>'
+      + '<div class="ws-cols">' + wsColHTML(b.id,CFG.u1,u1Items,isClosed) + (CFG.solo?'':wsColHTML(b.id,CFG.u2,u2Items,isClosed)) + '</div>'
       + actHTML + '</div>';
   }).join('');
   if (isClosed && week.summary) wbEl.innerHTML += '<div class="card" style="background:#F5F3FF;border-color:#DDD6FE;margin-top:12px;"><div class="slabel">AI SUMMARY</div><div style="font-size:13px;line-height:1.7;">' + esc(week.summary) + '</div></div>';
@@ -1736,7 +1760,7 @@ function renderWsHistory() {
   if (!weeks.length) { wh.innerHTML = '<div style="color:var(--dm);font-size:13px;">No past weeks yet.</div>'; return; }
   wh.innerHTML = weeks.map(function(wid) {
     var w = wsData.weeks[wid];
-    var totalItems = Object.keys(w.items||{}).reduce(function(s,bk) { var bi=w.items[bk]; return s+(bi.nimish?bi.nimish.length:0)+(bi.priyanka?bi.priyanka.length:0); }, 0);
+    var totalItems = Object.keys(w.items||{}).reduce(function(s,bk) { var bi=w.items[bk]||{}; var us=CFG.solo?[CFG.u1]:[CFG.u1,CFG.u2]; return s+us.reduce(function(ss,u){return ss+(bi[u]?bi[u].length:0);},0); }, 0);
     var totalActions = w.actions ? w.actions.length : 0;
     var doneActions = w.actions ? w.actions.filter(function(a) { return a.done; }).length : 0;
     var closedBadge = w.closed ? '<span style="font-size:10px;color:var(--g);font-weight:600;">&#10003; Closed</span>' : '';
@@ -1820,7 +1844,7 @@ async function runInsights() {
 
 //  SETTINGS 
 function populateSettings() {
-  var sn = el('setName'); if (sn) sn.value = D.settings.name || 'Dr. Nimish';
+  var sn = el('setName'); if (sn) sn.value = D.settings.name || CFG.u1Name;
   var myTasks = D.tasks.filter(function(t){return !t.owner||t.owner===currentUser;});
   var snU = el('snU'); var snD = el('snD'); var snP = el('snP');
   if (snU) snU.textContent = myTasks.filter(function(t){return !t.done;}).length + ' pending';
@@ -1924,7 +1948,19 @@ async function detectGeminiModels() {
 function updateBucket(id, key, val) { var b = D.buckets.find(function(bk){return bk.id===id;}); if (b) b[key]=val; saveData(); populateSidebar(); }
 function addBucket() { D.buckets.push({id:'bkt'+Date.now(),label:'New Bucket',icon:'&#128230;',color:'#6366F1'}); saveData(); populateSettings(); populateSidebar(); }
 
-//  AUTH 
+//  AUTH
+function initLockScreen() {
+  var nn = el('whoNim'); var pn = el('whoPri');
+  if (nn) { nn.innerHTML = CFG.u1Emoji + ' ' + CFG.u1Name; nn.onclick = function() { selectWho(CFG.u1); }; }
+  if (pn) {
+    if (CFG.solo || !CFG.u2) { pn.style.display = 'none'; }
+    else { pn.innerHTML = CFG.u2Emoji + ' ' + CFG.u2Name; pn.onclick = function() { selectWho(CFG.u2); }; }
+  }
+  var sw = document.querySelector('button[onclick="switchUser()"]');
+  if (sw && CFG.solo) sw.style.display = 'none';
+  var cpEls = document.querySelectorAll('[data-copyright]');
+  cpEls.forEach(function(el) { el.textContent = '© 2026 ' + CFG.copyright; });
+}
 function selectWho(who) {
   var sp = el('splash'); if (sp) sp.style.display = 'none';
   currentUser = who;
@@ -1936,8 +1972,8 @@ function selectWho(who) {
     if (lb) { lb.style.background = '#2ED573'; lb.textContent = 'Enter Demo \u2192'; }
   } else {
     if (gg) gg.classList.remove('active');
-    if (nn) nn.classList.toggle('active', who==='nimish');
-    if (pn) pn.classList.toggle('active', who==='priyanka');
+    if (nn) nn.classList.toggle('active', who===CFG.u1);
+    if (pn) pn.classList.toggle('active', who===CFG.u2);
     if (li) { li.style.display = 'block'; li.value = ''; }
     if (lb) { lb.style.background = '#FF6B35'; lb.textContent = 'Unlock \u2192'; }
   }
@@ -2008,7 +2044,7 @@ function bootApp() {
   var navParam = new URLSearchParams(location.search).get('nav');
   if (navParam && ['board','ritual','ws','insights','habits','settings'].includes(navParam)) nav(navParam);
   renderBoard(); renderSidebarStats(); renderInsights();
-  addPanelMsg('assistant', 'Good to see you, ' + (currentUser==='priyanka'?'Priyanka':'Dr. Nimish') + '! How can I help today?');
+  addPanelMsg('assistant', 'Good to see you, ' + (currentUser===CFG.u2?CFG.u2Name:CFG.u1Name) + '! How can I help today?');
   sbLoad(); applyEmotionMode(); setTimeout(checkWeeklyWins, 2000);
   initOffline(); initFabScroll();
   if ('serviceWorker' in navigator) {
@@ -2024,7 +2060,7 @@ function showApp() {
   var ld = el('loading'); if (ld) ld.style.display = 'none';
   var ml = el('mainLayout'); if (ml) ml.style.display = 'flex';
   var mn = el('mobNav'); if (mn) mn.style.display = 'flex';
-  var su = el('sbUser'); if (su) su.textContent = currentUser==='nimish'?'Dr. Nimish':'Priyanka';
+  var su = el('sbUser'); if (su) su.textContent = currentUser===CFG.u1?CFG.u1Name:CFG.u2Name;
   nav('board');
 }
 function switchUser() {
@@ -2035,7 +2071,7 @@ function switchUser() {
   var ls = el('lockScreen'); if (ls) ls.style.display = 'flex';
   var li = el('lockIn'); if (li) { li.style.display='block'; li.value=''; }
   var le = el('lockErr'); if (le) le.textContent = '';
-  var next = currentUser==='nimish'?'priyanka':'nimish'; selectWho(next);
+  var next = currentUser===CFG.u1?CFG.u2:CFG.u1; selectWho(next);
 }
 
 //  SAVE / LOAD 
@@ -2118,7 +2154,7 @@ async function sbLoad() {
     }
   } catch(e) { console.warn('SB load:', e.message); }
   try {
-    var wr = await fetch(SB_URL+'/rest/v1/lcc_weekly?id=eq.nimish', {headers:{apikey:SB_ANON,Authorization:'Bearer '+SB_ANON}});
+    var wr = await fetch(SB_URL+'/rest/v1/lcc_weekly?id=eq.'+CFG.u1, {headers:{apikey:SB_ANON,Authorization:'Bearer '+SB_ANON}});
     if (wr.ok) {
       var warr = await wr.json();
       if (warr && warr[0] && warr[0].data) {
@@ -2133,8 +2169,8 @@ async function sbLoad() {
             // Merge items per bucket per person (union by text)
             Object.keys(rw.items || {}).forEach(function(bktId) {
               var rb = rw.items[bktId] || {};
-              if (!lw.items[bktId]) lw.items[bktId] = {nimish:[], priyanka:[]};
-              ['nimish','priyanka'].forEach(function(who) {
+              if (!lw.items[bktId]) { var _m={}; _m[CFG.u1]=[]; if(!CFG.solo)_m[CFG.u2]=[]; lw.items[bktId]=_m; }
+              (CFG.solo?[CFG.u1]:[CFG.u1,CFG.u2]).forEach(function(who) {
                 var rList = rb[who] || [];
                 var lList = lw.items[bktId][who] || [];
                 rList.forEach(function(ri) {
@@ -2166,7 +2202,7 @@ async function sbSaveWs() {
     await fetch(SB_URL+'/rest/v1/lcc_weekly', {
       method: 'POST',
       headers: {'Content-Type':'application/json',apikey:SB_ANON,Authorization:'Bearer '+SB_ANON,Prefer:'resolution=merge-duplicates,return=minimal'},
-      body: JSON.stringify({id:'nimish',data:wsData,updated_at:new Date().toISOString()})
+      body: JSON.stringify({id:CFG.u1,data:wsData,updated_at:new Date().toISOString()})
     });
   } catch(e) {}
 }
@@ -2347,7 +2383,7 @@ function checkSession() { try { var s=JSON.parse(localStorage.getItem(SESSION_KE
 
 //  AI 
 async function callAI(prompt, history) {
-  var SYS = 'You are LCC Assistant, a warm helpful productivity AI for Dr. Nimish Pankhedkar and Priyanka. Keep responses concise and actionable.';
+  var SYS = 'You are LCC Assistant, a warm helpful productivity AI for '+CFG.u1Name+(CFG.solo?'':' and '+CFG.u2Name)+'. Keep responses concise and actionable.';
   // Primary: Supabase Edge Function (key stored server-side as secret)
   try {
     var res = await fetch(SB_URL+'/functions/v1/ai-proxy', {
@@ -2446,7 +2482,8 @@ async function wsGenAgenda() {
   var items = week ? (week.items || {}) : {};
   var summary = D.wsBuckets.map(function(b) {
     var bi = items[b.id] || {};
-    var notes = ((bi.nimish||[]).concat(bi.priyanka||[])).map(function(i){return i.text;}).join(', ');
+    var _u1n=bi[CFG.u1]||[]; var _u2n=CFG.solo?[]:(bi[CFG.u2]||[]);
+    var notes = _u1n.concat(_u2n).map(function(i){return i.text;}).join(', ');
     return b.label + ': ' + (notes || 'No notes');
   }).join('\n');
   try {
@@ -2470,13 +2507,13 @@ async function wsGenAgenda() {
       setTimeout(function() {
         var sp2 = el('splash'); if (sp2) sp2.style.display = 'none';
         var ls = el('lockScreen'); if (ls) ls.style.display = 'flex';
-        selectWho('nimish');
+        initLockScreen(); selectWho(CFG.u1);
       }, 1500);
     }
   } catch(ex) {
     var sp3 = el('splash'); if (sp3) sp3.style.display = 'none';
     var ls2 = el('lockScreen'); if (ls2) ls2.style.display = 'flex';
-    selectWho('nimish');
+    initLockScreen(); selectWho(CFG.u1);
   }
 })();
 
@@ -2512,7 +2549,7 @@ async function wsGenAgenda() {
   </div>
 </div>
 <button id="fabAdd" onclick="openQuickAdd()" style="position:fixed;bottom:80px;right:76px;z-index:300;width:52px;height:52px;border-radius:50%;border:none;background:linear-gradient(135deg,#FF6B35,#FF8C42);box-shadow:0 4px 20px rgba(255,107,53,.4);cursor:pointer;color:#fff;font-size:28px;font-weight:300;display:flex;align-items:center;justify-content:center;transition:opacity .3s;" title="Add Task">+</button>
-<div style="text-align:center;padding:16px;font-size:10px;color:#C4A882;font-family:Nunito,sans-serif;">&copy; 2026 Dr. Nimish Pankhedkar. All rights reserved.</div>
+<div data-copyright style="text-align:center;padding:16px;font-size:10px;color:#C4A882;font-family:Nunito,sans-serif;">&copy; 2026 Dr. Nimish Pankhedkar. All rights reserved.</div>
 
 </body>
 </html>
