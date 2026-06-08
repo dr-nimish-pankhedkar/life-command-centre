@@ -475,6 +475,12 @@ button{cursor:pointer;}
           <button class="btn btn-primary btn-sm" onclick="submitAdd()">Save</button>
           <button class="btn btn-sec btn-sm" onclick="closeAdd()">Cancel</button>
         <input type="date" id="newTarget" style="margin-top:6px;width:100%;padding:8px 12px;border:1px solid var(--bd);border-radius:8px;font-size:13px;color:var(--tx);background:var(--sf);outline:none;" placeholder="Target date (optional)">
+        <select id="newRepeat" style="margin-top:6px;width:100%;padding:8px 12px;border:1px solid var(--bd);border-radius:8px;font-size:13px;color:var(--tx);background:var(--sf);outline:none;">
+          <option value="none">Does not repeat</option>
+          <option value="daily">Repeats daily</option>
+          <option value="weekly">Repeats weekly</option>
+          <option value="monthly">Repeats monthly</option>
+        </select>
         </div>
       </div>
       <div id="guestBanner" style="display:none;background:linear-gradient(135deg,#EEFFEF,#D4FAE8);border:1.5px solid #92F0A0;border-radius:14px;padding:10px 16px;margin-bottom:10px;font-size:11px;color:#1A7A40;font-weight:700;text-align:center;">&#128100; Guest Demo &mdash; sample data only. Nothing is saved.</div><div id="greetingCard" style="margin-bottom:10px;"></div><div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap;"><button id="filterToggle" onclick="toggleFilterDrawer()" style="padding:7px 14px;border-radius:50px;border:1.5px solid #E0D0C0;background:#fff;font-size:11px;font-weight:700;color:#8B6B50;cursor:pointer;font-family:Nunito,sans-serif;outline:none;">&#9776; Sort &amp; Filter</button><div id="activeChips" style="display:flex;gap:5px;flex-wrap:wrap;"></div></div><div id="filterDrawer" style="display:none;padding:10px 14px;background:#fff;border:1.5px solid #F0E0D0;border-radius:14px;margin-bottom:10px;flex-wrap:wrap;gap:6px;"><button class="sf-btn" id="filter-p1b" onclick="toggleFilter('p1')">&#9889; P1</button><button class="sf-btn" id="filter-p2b" onclick="toggleFilter('p2')">&#128204; P2</button><button class="sf-btn" id="sort-priorityb" onclick="setSort('priority')">&#8597; Priority</button><button class="sf-btn" id="sort-dateb" onclick="setSort('date')">&#128197; Date</button><button class="sf-btn" id="sort-bucketb" onclick="setSort('bucket')">&#128230; Bucket</button><button class="sf-btn" id="filter-doneb" onclick="toggleFilter('done')">&#10003; Done</button><button class="sf-btn" onclick="clearFilters()" style="color:#EF4444;">&#10005; Clear</button></div><div id="bktChipsRow" style="display:flex;gap:6px;overflow-x:auto;padding:0 0 6px 0;margin-bottom:8px;scrollbar-width:none;-webkit-overflow-scrolling:touch;"></div><div id="taskLists"></div>
@@ -1000,7 +1006,8 @@ function targetBadge(t) {
   var now = new Date(); now.setHours(0,0,0,0);
   var over = td < now;
   var mo = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  return '<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:12px;background:' + (over ? '#FEE2E2' : '#FFF3E8') + ';color:' + (over ? '#EF4444' : '#F59E0B') + ';">&#128197; ' + td.getDate() + ' ' + mo[td.getMonth()] + '</span>';
+  var rpt = t.repeat ? ' &#8635;' : '';
+  return '<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:12px;background:' + (over ? '#FEE2E2' : '#FFF3E8') + ';color:' + (over ? '#EF4444' : '#F59E0B') + ';">&#128197; ' + td.getDate() + ' ' + mo[td.getMonth()] + rpt + '</span>';
 }
 
 //  TASK CARD 
@@ -1184,13 +1191,14 @@ function deleteTask(id) {
 }
 function startEdit(id) { editingTaskId = id; renderBoard(); setTimeout(function() { var i = el('editTxt-' + id); if (i) i.focus(); }, 50); }
 function saveEdit(id) {
-  var i = el('editTxt-' + id); var pri = el('editPri-' + id); var bkt = el('editBkt-' + id); var tgt = el('editTarget-' + id);
+  var i = el('editTxt-' + id); var pri = el('editPri-' + id); var bkt = el('editBkt-' + id); var tgt = el('editTarget-' + id); var rpt = el('editRepeat-' + id);
   if (!i) return; var txt = i.value.trim(); if (!txt) return;
   var task = D.tasks.find(function(t) { return t.id === id; }); if (!task) return;
   task.text = txt;
   if (pri) task.priority = pri.value;
   if (bkt) task.bucket = bkt.value;
   if (tgt) task.target = tgt.value || null;
+  if (rpt) task.repeat = rpt.value !== 'none' ? rpt.value : null;
   editingTaskId = null; saveData(); renderBoard();
 }
 function cancelEdit() { editingTaskId = null; renderBoard(); }
@@ -1205,6 +1213,9 @@ function tRowHTML(t, isDone) {
       + '<select id="editPri-' + t.id + '" style="border:1px solid #F0E0D0;border-radius:8px;padding:6px 8px;font-size:12px;outline:none;">' + opts + '</select>'
       + '<select id="editBkt-' + t.id + '" style="border:1px solid #F0E0D0;border-radius:8px;padding:6px 8px;font-size:12px;outline:none;">' + bktOpts + '</select>'
       + '<input type="date" id="editTarget-' + t.id + '" value="' + (t.target||'') + '" style="border:1px solid #F0E0D0;border-radius:8px;padding:6px 8px;font-size:12px;color:#1A0F06;"/>'
+      + '<select id="editRepeat-' + t.id + '" style="border:1px solid #F0E0D0;border-radius:8px;padding:6px 8px;font-size:12px;outline:none;">'
+      + ['none','daily','weekly','monthly'].map(function(r){return '<option value="'+r+'"'+((t.repeat||'none')===r?' selected':'')+'>'+(r==='none'?'No repeat':r.charAt(0).toUpperCase()+r.slice(1))+'</option>';}).join('')
+      + '</select>'
       + '<button data-tid="' + t.id + '" onclick="saveEdit(parseInt(this.dataset.tid))" style="background:#FF6B35;color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;">Save</button>'
       + '<button onclick="cancelEdit()" style="border:1px solid #F0E0D0;border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;">Cancel</button>'
       + '</div>';
@@ -1244,11 +1255,11 @@ function closeAllSwipes() { document.querySelectorAll('.task-swipe-inner').forEa
 function openAdd() { var af = el('addForm'); if (af) af.style.display = 'block'; initBktSelects(); setTimeout(function() { var i = el('newTxt'); if (i) i.focus(); }, 100); }
 function closeAdd() { var af = el('addForm'); if (af) af.style.display = 'none'; }
 function submitAdd() {
-  var txt = el('newTxt'); var bkt = el('newBkt'); var pri = el('newPri'); var tgt = el('newTarget');
+  var txt = el('newTxt'); var bkt = el('newBkt'); var pri = el('newPri'); var tgt = el('newTarget'); var rpt = el('newRepeat');
   if (!txt || !txt.value.trim()) return;
   if (currentUser === 'guest') { closeAdd(); return; }
-  D.tasks.push({id:Date.now(), text:txt.value.trim(), bucket:bkt?bkt.value:D.buckets[0].id, priority:pri?pri.value:'P2', done:false, created:Date.now(), owner:currentUser, target:tgt&&tgt.value?tgt.value:null, fromSync:false});
-  txt.value = ''; vibrate([20,10,20]); closeAdd(); saveData(); renderBoard(); renderSidebarStats(); populateSidebar();
+  D.tasks.push({id:Date.now(), text:txt.value.trim(), bucket:bkt?bkt.value:D.buckets[0].id, priority:pri?pri.value:'P2', done:false, created:Date.now(), owner:currentUser, target:tgt&&tgt.value?tgt.value:null, repeat:rpt&&rpt.value!=='none'?rpt.value:null, fromSync:false});
+  txt.value = ''; if (rpt) rpt.value = 'none'; vibrate([20,10,20]); closeAdd(); saveData(); renderBoard(); renderSidebarStats(); populateSidebar();
 }
 
 //  QUICK ADD 
@@ -1267,12 +1278,13 @@ function closeQuickAdd() {
   if (overlay) overlay.style.display = 'none';
   var i = el('qaInput'); if (i) i.value = '';
   var qt = el('qaTarget'); if (qt) qt.value = '';
+  var qr = el('qaRepeat'); if (qr) qr.value = 'none';
 }
 function submitQuickAdd() {
-  var txt = el('qaInput'); var bkt = el('qaBkt'); var pri = el('qaPri'); var tgt = el('qaTarget');
+  var txt = el('qaInput'); var bkt = el('qaBkt'); var pri = el('qaPri'); var tgt = el('qaTarget'); var rpt = el('qaRepeat');
   if (!txt || !txt.value.trim()) { closeQuickAdd(); return; }
   if (currentUser === 'guest') { closeQuickAdd(); return; }
-  D.tasks.push({id:Date.now(), text:txt.value.trim(), bucket:bkt?bkt.value:(D.buckets[0]||{id:'cafe'}).id, priority:pri?pri.value:'P2', done:false, created:Date.now(), owner:currentUser, target:tgt&&tgt.value?tgt.value:null, fromSync:false});
+  D.tasks.push({id:Date.now(), text:txt.value.trim(), bucket:bkt?bkt.value:(D.buckets[0]||{id:'cafe'}).id, priority:pri?pri.value:'P2', done:false, created:Date.now(), owner:currentUser, target:tgt&&tgt.value?tgt.value:null, repeat:rpt&&rpt.value!=='none'?rpt.value:null, fromSync:false});
   vibrate([20,10,20]); closeQuickAdd(); saveData(); renderBoard(); renderSidebarStats(); populateSidebar();
 }
 
@@ -1663,19 +1675,22 @@ function wsColHTML(bucketId, who, items, isClosed) {
     html += '<div class="ws-item' + carried + '"><span class="ws-item-txt">' + esc(item.text) + '</span>' + taskBadge + badge + editBtn + delBtn + '</div>';
   }
   if (!isClosed) {
-    // Note input
-    html += '<div class="ws-add-form" id="wsForm-' + bucketId + '-' + who + '" style="display:none;">'
-      + '<input class="ws-add-input" id="wsIn-' + bucketId + '-' + who + '" placeholder="Add note..."/>'
+    // Task input (default/primary)
+    html += '<div class="ws-add-form" id="wsTaskForm-' + bucketId + '-' + who + '" style="display:none;flex-direction:column;align-items:stretch;gap:6px;">'
+      + '<input class="ws-add-input" id="wsTaskIn-' + bucketId + '-' + who + '" placeholder="Add a task..." style="width:100%;"/>'
+      + '<label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--mu);font-weight:700;cursor:pointer;">'
+      + '<input type="checkbox" id="wsTaskAlsoNote-' + bucketId + '-' + who + '" style="accent-color:#A55EEA;width:14px;height:14px;cursor:pointer;"/> Also save as a note here</label>'
+      + '<div style="display:flex;gap:6px;">'
+      + '<button class="ws-add-save" data-bkt="' + bucketId + '" data-who="' + who + '" onclick="wsAddTask(this.dataset.bkt,this.dataset.who)">Add Task</button>'
+      + '<button class="ws-add-cancel" data-bkt="' + bucketId + '" data-who="' + who + '" onclick="wsHideTaskForm(this.dataset.bkt,this.dataset.who)">&#10005;</button>'
+      + '</div></div>'
+      + '<button class="ws-add-btn" data-bkt="' + bucketId + '" data-who="' + who + '" onclick="wsShowTaskForm(this.dataset.bkt,this.dataset.who)">+ Add Task</button>'
+      + '<div class="ws-add-form" id="wsForm-' + bucketId + '-' + who + '" style="display:none;">'
+      + '<input class="ws-add-input" id="wsIn-' + bucketId + '-' + who + '" placeholder="Add a note..."/>'
       + '<button class="ws-add-save" data-bkt="' + bucketId + '" data-who="' + who + '" onclick="wsAddItem(this.dataset.bkt,this.dataset.who)">Add</button>'
       + '<button class="ws-add-cancel" data-bkt="' + bucketId + '" data-who="' + who + '" onclick="wsHideForm(this.dataset.bkt,this.dataset.who)">&#10005;</button>'
       + '</div>'
-      + '<button class="ws-add-btn" data-bkt="' + bucketId + '" data-who="' + who + '" onclick="wsShowForm(this.dataset.bkt,this.dataset.who)">+ Add note</button>'
-      + '<div class="ws-add-form" id="wsTaskForm-' + bucketId + '-' + who + '" style="display:none;">'
-      + '<input class="ws-add-input" id="wsTaskIn-' + bucketId + '-' + who + '" placeholder="Add as task..."/>'
-      + '<button class="ws-add-save" data-bkt="' + bucketId + '" data-who="' + who + '" onclick="wsAddTask(this.dataset.bkt,this.dataset.who)">Add Task</button>'
-      + '<button class="ws-add-cancel" data-bkt="' + bucketId + '" data-who="' + who + '" onclick="wsHideTaskForm(this.dataset.bkt,this.dataset.who)">&#10005;</button>'
-      + '</div>'
-      + '<button style="font-size:11px;color:#A55EEA;background:none;border:none;cursor:pointer;padding:4px 0;font-family:Nunito,sans-serif;font-weight:700;" data-bkt="' + bucketId + '" data-who="' + who + '" onclick="wsShowTaskForm(this.dataset.bkt,this.dataset.who)">&#128279; Add as Task</button>';
+      + '<button style="font-size:11px;color:var(--mu);background:none;border:none;cursor:pointer;padding:4px 0;font-family:Nunito,sans-serif;font-weight:700;" data-bkt="' + bucketId + '" data-who="' + who + '" onclick="wsShowForm(this.dataset.bkt,this.dataset.who)">&#128221; Add note</button>';
   }
   html += '</div>';
   return html;
@@ -1694,7 +1709,9 @@ function wsAddItem(bkt, who) {
 async function wsAddTask(bkt, who) {
   var inp = el('wsTaskIn-'+bkt+'-'+who); if (!inp) return;
   var txt = inp.value.trim(); if (!txt) return;
-  inp.value = ''; wsHideTaskForm(bkt, who);
+  var alsoNoteEl = el('wsTaskAlsoNote-'+bkt+'-'+who);
+  var alsoNote = alsoNoteEl ? alsoNoteEl.checked : false;
+  inp.value = ''; if (alsoNoteEl) alsoNoteEl.checked = false; wsHideTaskForm(bkt, who);
   // Use Gemini to pick best bucket from D.buckets
   var mappedBucket = bkt; // default: use ws bucket id as fallback
   try {
@@ -1716,6 +1733,7 @@ async function wsAddTask(bkt, who) {
   if (week) {
     if (!week.items[bkt]) { var _o={}; _o[CFG.u1]=[]; if(!CFG.solo)_o[CFG.u2]=[]; week.items[bkt]=_o; }
     week.items[bkt][who].push({text:txt, carried:false, isTask:true});
+    if (alsoNote) week.items[bkt][who].push({text:txt, carried:false});
     saveWs();
   }
   renderWsView();
@@ -1734,6 +1752,29 @@ function wsSaveItemEdit(bkt, who, idx) {
   var week = wsData.weeks[wsCurrentWeek]; if (!week) return;
   if (week.items[bkt] && week.items[bkt][who] && week.items[bkt][who][idx]) week.items[bkt][who][idx].text = txt;
   editingWsItem = null; saveWs(); renderWsView();
+}
+function convertWsNotesToTasks() {
+  if (D.settings._wsNotesMigrated || !wsData.weeks) return;
+  var changed = false;
+  Object.keys(wsData.weeks).forEach(function(wid) {
+    var week = wsData.weeks[wid]; if (!week.items) return;
+    Object.keys(week.items).forEach(function(bktId) {
+      var col = week.items[bktId];
+      Object.keys(col).forEach(function(who) {
+        (col[who]||[]).forEach(function(item) {
+          if (!item.isTask) {
+            var exists = D.tasks.some(function(t){ return t.fromSync && t.text===item.text && t.owner===who; });
+            if (!exists) D.tasks.push({id:Date.now()+Math.floor(Math.random()*100000),text:item.text,bucket:bktId,priority:'P2',done:false,created:Date.now(),owner:who,target:null,repeat:null,fromSync:true});
+            item.isTask = true;
+            changed = true;
+          }
+        });
+      });
+    });
+  });
+  D.settings._wsNotesMigrated = true;
+  if (changed) { saveData(); renderBoard(); renderSidebarStats(); populateSidebar(); } else saveData();
+  saveWs();
 }
 function renderWsView() {
   var week = wsData.weeks[wsCurrentWeek]; if (!week) return;
@@ -1797,6 +1838,16 @@ function calVisibleTasks() {
 function calOwnerColor(t) {
   return t.owner === CFG.u1 ? CFG.u1Color : t.owner === CFG.u2 ? CFG.u2Color : t.owner === 'joint' ? '#A55EEA' : '#94A3B8';
 }
+function calTaskOccursOn(t, ds) {
+  if (!t.target) return false;
+  if (ds < t.target) return false;
+  if (!t.repeat || t.repeat === 'none') return ds === t.target;
+  var td = new Date(t.target+'T00:00:00'); var dd = new Date(ds+'T00:00:00');
+  if (t.repeat === 'daily') return true;
+  if (t.repeat === 'weekly') return td.getDay() === dd.getDay();
+  if (t.repeat === 'monthly') return td.getDate() === dd.getDate();
+  return false;
+}
 function setCalMode(mode) { calMode = mode; document.querySelectorAll('.cal-mode-btn').forEach(function(b){b.classList.toggle('active', b.dataset.m===mode);}); renderCalendar(); }
 function calNav(dir) {
   if (calMode==='month') calDate.setMonth(calDate.getMonth()+dir);
@@ -1842,7 +1893,7 @@ function renderCalMonth(container) {
   var html = '<div class="cal-grid">' + dows.map(function(dw){return '<div class="cal-dow">'+dw+'</div>';}).join('');
   cells.forEach(function(c) {
     var ds = fmtDateKey(c.date);
-    var dayTasks = tasks.filter(function(t){return t.target===ds;});
+    var dayTasks = tasks.filter(function(t){return calTaskOccursOn(t,ds);});
     var isToday = ds === todayStr;
     var dots = dayTasks.slice(0,4).map(function(t){return '<div class="cal-dot" style="background:'+calOwnerColor(t)+';"></div>';}).join('');
     var more = dayTasks.length > 4 ? '<div class="cal-day-more">+'+(dayTasks.length-4)+'</div>' : '';
@@ -1863,7 +1914,7 @@ function renderCalWeek(container) {
   for (var i=0;i<7;i++) {
     var cd = new Date(d); cd.setDate(d.getDate()+i);
     var ds = fmtDateKey(cd);
-    var dayTasks = tasks.filter(function(t){return t.target===ds;});
+    var dayTasks = tasks.filter(function(t){return calTaskOccursOn(t,ds);});
     var isToday = ds===todayStr;
     html += '<div class="cal-week-col">'
       + '<div class="cal-week-col-hdr'+(isToday?' today':'')+'" onclick="calOpenDay(\''+ds+'\')" style="cursor:pointer;">'+dows[i]+' <span style="font-weight:800;">'+cd.getDate()+'</span></div>'
@@ -1878,7 +1929,7 @@ function renderCalWeek(container) {
 }
 function renderCalDay(container) {
   var ds = fmtDateKey(calDate);
-  var tasks = calVisibleTasks().filter(function(t){return t.target===ds;});
+  var tasks = calVisibleTasks().filter(function(t){return calTaskOccursOn(t,ds);});
   var dt = new Date(ds+'T00:00:00');
   var lbl = dt.toLocaleDateString(undefined,{weekday:'long', day:'numeric', month:'long', year:'numeric'});
   var html = '<div style="font-size:16px;font-weight:800;margin-bottom:12px;">'+lbl+'</div>';
@@ -2324,8 +2375,11 @@ async function sbLoad() {
           }
         });
         saveWs();
+        convertWsNotesToTasks();
         var wsView = el('view-ws');
         if (wsView && wsView.classList.contains('active')) renderWsView();
+        var calView = el('view-cal');
+        if (calView && calView.classList.contains('active')) renderCalendar();
       }
     }
   } catch(e) {}
@@ -2693,7 +2747,12 @@ async function wsGenAgenda() {
       <option value="P1">P1 Critical</option><option value="P2" selected>P2 Important</option><option value="P3">P3 Someday</option>
     </select>
   </div>
-  <div style="margin-bottom:14px;"><label style="font-size:11px;font-weight:700;color:#8B6B50;display:block;margin-bottom:4px;">TARGET DATE (optional)</label><input type="date" id="qaTarget" style="width:100%;padding:10px 12px;border:1.5px solid #F0E0D0;border-radius:12px;font-size:13px;font-family:Nunito,sans-serif;background:#fff;color:#1A0F06;outline:none;"></div>
+  <div style="display:flex;gap:8px;margin-bottom:14px;">
+    <div style="flex:1;"><label style="font-size:11px;font-weight:700;color:#8B6B50;display:block;margin-bottom:4px;">TARGET DATE (optional)</label><input type="date" id="qaTarget" style="width:100%;padding:10px 12px;border:1.5px solid #F0E0D0;border-radius:12px;font-size:13px;font-family:Nunito,sans-serif;background:#fff;color:#1A0F06;outline:none;"></div>
+    <div style="flex:1;"><label style="font-size:11px;font-weight:700;color:#8B6B50;display:block;margin-bottom:4px;">REPEAT</label><select id="qaRepeat" style="width:100%;padding:10px 12px;border:1.5px solid #F0E0D0;border-radius:12px;font-size:13px;font-family:Nunito,sans-serif;background:#fff;color:#1A0F06;outline:none;">
+      <option value="none">Never</option><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option>
+    </select></div>
+  </div>
   <button onclick="submitQuickAdd()" style="width:100%;padding:14px;background:linear-gradient(135deg,#FF6B35,#FF8C42);color:#fff;border:none;border-radius:14px;font-size:15px;font-weight:800;cursor:pointer;font-family:Nunito,sans-serif;">Add Task</button>
 </div>
 <button id="chatFab" onclick="toggleChatPanel()" style="position:fixed;bottom:80px;right:16px;z-index:300;width:52px;height:52px;border-radius:50%;border:none;background:linear-gradient(135deg,#FF6B35,#FF8C42);box-shadow:0 4px 20px rgba(255,107,53,.4);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:opacity .3s;" title="AI Assistant">
