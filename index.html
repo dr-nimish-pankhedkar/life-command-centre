@@ -1525,7 +1525,7 @@ async function runMorning() {
   var otherBlock = otherP1.length ? '\nOther urgent P1 tasks:\n'+otherP1.map(fmtTask).join('\n') : '';
 
   var prompt =
-    'Morning briefing for '+CFG.u1Name+'.\n'+
+    'Morning briefing for '+(currentUser===CFG.u2?CFG.u2Name:CFG.u1Name)+'.\n'+
     'Mood: '+mood+'\n'+
     'Focus area: '+focusLabel+'\n'+
     'Mode: '+modeDesc+'\n'+
@@ -1809,7 +1809,7 @@ async function runInsights() {
 
 //  SETTINGS 
 function populateSettings() {
-  var sn = el('setName'); if (sn) sn.value = D.settings.name || CFG.u1Name;
+  var sn = el('setName'); if (sn) sn.value = D.settings.name || (currentUser===CFG.u2?CFG.u2Name:CFG.u1Name);
   var myTasks = D.tasks.filter(function(t){return !t.owner||t.owner===currentUser;});
   var snU = el('snU'); var snD = el('snD'); var snP = el('snP');
   if (snU) snU.textContent = myTasks.filter(function(t){return !t.done;}).length + ' pending';
