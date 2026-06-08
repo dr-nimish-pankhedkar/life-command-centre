@@ -1717,8 +1717,17 @@ function wsColHTML(bucketId, who, items, isClosed) {
   }
   if (!isClosed) {
     // Task input (default/primary)
+    var wsTaskSuffix = '-' + bucketId + '-' + who;
     html += '<div class="ws-add-form" id="wsTaskForm-' + bucketId + '-' + who + '" style="display:none;flex-direction:column;align-items:stretch;gap:6px;">'
       + '<input class="ws-add-input" id="wsTaskIn-' + bucketId + '-' + who + '" placeholder="Add a task..." style="width:100%;"/>'
+      + '<div style="display:flex;gap:6px;">'
+      + '<input type="date" id="wsTaskDate-' + bucketId + '-' + who + '" style="flex:1;border:1px solid var(--bd);border-radius:8px;padding:6px 8px;font-size:12px;color:var(--tx);background:var(--sf);outline:none;"/>'
+      + '<select id="wsTaskRepeat' + wsTaskSuffix + '" onchange="onRepeatChange(\'wsTask\',\'' + wsTaskSuffix + '\')" style="flex:1;border:1px solid var(--bd);border-radius:8px;padding:6px 8px;font-size:12px;color:var(--tx);background:var(--sf);outline:none;">'
+      + '<option value="none">No repeat</option><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option>'
+      + '</select></div>'
+      + repeatDayPickerHTML('wsTask', wsTaskSuffix, [], true)
+      + (CFG.solo ? '' : '<label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--mu);font-weight:700;cursor:pointer;">'
+      + '<input type="checkbox" id="wsTaskBoth-' + bucketId + '-' + who + '" style="accent-color:#A55EEA;width:14px;height:14px;cursor:pointer;"/> Add for both of us</label>')
       + '<label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--mu);font-weight:700;cursor:pointer;">'
       + '<input type="checkbox" id="wsTaskAlsoNote-' + bucketId + '-' + who + '" style="accent-color:#A55EEA;width:14px;height:14px;cursor:pointer;"/> Also save as a note here</label>'
       + '<div style="display:flex;gap:6px;">'
@@ -1748,11 +1757,22 @@ function wsAddItem(bkt, who) {
   inp.value = ''; wsHideForm(bkt, who); saveWs(); renderWsView();
 }
 async function wsAddTask(bkt, who) {
+  var wsTaskSuffix = '-' + bkt + '-' + who;
   var inp = el('wsTaskIn-'+bkt+'-'+who); if (!inp) return;
   var txt = inp.value.trim(); if (!txt) return;
   var alsoNoteEl = el('wsTaskAlsoNote-'+bkt+'-'+who);
   var alsoNote = alsoNoteEl ? alsoNoteEl.checked : false;
-  inp.value = ''; if (alsoNoteEl) alsoNoteEl.checked = false; wsHideTaskForm(bkt, who);
+  var bothEl = el('wsTaskBoth-'+bkt+'-'+who);
+  var both = (bothEl ? bothEl.checked : false) && !CFG.solo;
+  var dateEl = el('wsTaskDate-'+bkt+'-'+who);
+  var target = dateEl && dateEl.value ? dateEl.value : null;
+  var rptEl = el('wsTaskRepeat'+wsTaskSuffix);
+  var repeat = rptEl && rptEl.value !== 'none' ? rptEl.value : null;
+  var rptDaysEl = el('wsTaskRepeatDays'+wsTaskSuffix);
+  var repeatDays = (repeat === 'weekly' && rptDaysEl && rptDaysEl.value) ? rptDaysEl.value.split(',').map(Number) : null;
+  inp.value = ''; if (alsoNoteEl) alsoNoteEl.checked = false; if (bothEl) bothEl.checked = false;
+  if (dateEl) dateEl.value = ''; if (rptEl) rptEl.value = 'none'; resetRepeatPicker('wsTask', wsTaskSuffix);
+  wsHideTaskForm(bkt, who);
   // Use Gemini to pick best bucket from D.buckets
   var mappedBucket = bkt; // default: use ws bucket id as fallback
   try {
@@ -1767,21 +1787,26 @@ async function wsAddTask(bkt, who) {
       if (partial) mappedBucket = partial.id;
     }
   } catch(ex) {}
-  D.tasks.push({id:Date.now(),text:txt,bucket:mappedBucket,priority:'P2',done:false,created:Date.now(),owner:who,target:null,fromSync:true});
+  var taskOwner = both ? 'joint' : who;
+  D.tasks.push({id:Date.now(),text:txt,bucket:mappedBucket,priority:'P2',done:false,created:Date.now(),owner:taskOwner,target:target,repeat:repeat,repeatDays:repeatDays,fromSync:true});
   saveData(); renderBoard(); renderSidebarStats(); populateSidebar();
-  // Also persist in wsData so the entry stays visible in the weekly sync column
+  // Also persist in wsData so the entry stays visible in the weekly sync column(s)
   var week = wsData.weeks[wsCurrentWeek];
   if (week) {
     if (!week.items[bkt]) { var _o={}; _o[CFG.u1]=[]; if(!CFG.solo)_o[CFG.u2]=[]; week.items[bkt]=_o; }
-    week.items[bkt][who].push({text:txt, carried:false, isTask:true});
-    if (alsoNote) week.items[bkt][who].push({text:txt, carried:false});
+    var whos = both ? [CFG.u1, CFG.u2] : [who];
+    whos.forEach(function(w) {
+      if (!week.items[bkt][w]) week.items[bkt][w] = [];
+      week.items[bkt][w].push({text:txt, carried:false, isTask:true});
+      if (alsoNote) week.items[bkt][w].push({text:txt, carried:false});
+    });
     saveWs();
   }
   renderWsView();
   // Brief feedback
   var feedbackEl = document.createElement('div');
   feedbackEl.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#A55EEA;color:#fff;padding:8px 20px;border-radius:20px;font-size:13px;font-weight:700;z-index:900;';
-  feedbackEl.textContent = 'Task added to ' + (who === CFG.u1 ? CFG.u1Name : CFG.u2Name) + "'s board";
+  feedbackEl.textContent = both ? 'Task added for both of you' : ('Task added to ' + (who === CFG.u1 ? CFG.u1Name : CFG.u2Name) + "'s board");
   document.body.appendChild(feedbackEl);
   setTimeout(function() { if (feedbackEl.parentNode) feedbackEl.remove(); }, 2500);
 }
