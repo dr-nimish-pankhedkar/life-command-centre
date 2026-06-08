@@ -1750,9 +1750,10 @@ function wsColHTML(bucketId, who, items, isClosed) {
     }
     var badge = item.carried ? '<span class="ws-carried-badge">&#8617; carried</span>' : '';
     var taskBadge = item.isTask ? '<span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;background:#A55EEA18;color:#A55EEA;flex-shrink:0;">&#10003; task</span>' : '';
+    var wsRptBadge = (item.isTask && item.repeat) ? repeatBadge(item) : '';
     var editBtn = isClosed ? '' : '<button class="ws-item-del" data-key="' + key + '" onclick="startWsItemEdit(this.dataset.key)" title="Edit">&#9998;</button>';
     var delBtn = isClosed ? '' : '<button class="ws-item-del" data-bkt="' + bucketId + '" data-who="' + who + '" data-idx="' + i + '" onclick="wsDeleteItem(this.dataset.bkt,this.dataset.who,parseInt(this.dataset.idx))">&#10005;</button>';
-    html += '<div class="ws-item' + carried + '"><span class="ws-item-txt">' + esc(item.text) + '</span>' + taskBadge + badge + editBtn + delBtn + '</div>';
+    html += '<div class="ws-item' + carried + '"><span class="ws-item-txt">' + esc(item.text) + '</span>' + taskBadge + wsRptBadge + badge + editBtn + delBtn + '</div>';
   }
   if (!isClosed) {
     // Task input (default/primary)
@@ -1836,7 +1837,7 @@ async function wsAddTask(bkt, who) {
     var whos = both ? [CFG.u1, CFG.u2] : [who];
     whos.forEach(function(w) {
       if (!week.items[bkt][w]) week.items[bkt][w] = [];
-      week.items[bkt][w].push({text:txt, carried:false, isTask:true});
+      week.items[bkt][w].push({text:txt, carried:false, isTask:true, repeat:repeat, repeatDays:repeatDays});
       if (alsoNote) week.items[bkt][w].push({text:txt, carried:false});
     });
     saveWs();
