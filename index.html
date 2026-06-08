@@ -171,13 +171,6 @@ button{cursor:pointer;}
 .ws-add-save{background:var(--ac);color:#fff;border:none;border-radius:7px;padding:7px 12px;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s;}
 .ws-add-save:hover{transform:translateY(-1px);}
 .ws-add-cancel{background:var(--sf2);border:1px solid var(--bd);border-radius:7px;padding:7px 10px;font-size:11px;color:var(--mu);cursor:pointer;}
-.ws-actions{padding:12px 14px;border-top:1px solid var(--bd);background:var(--sf2);}
-.ws-action-hdr{font-size:10px;font-weight:700;letter-spacing:1px;color:var(--mu);margin-bottom:8px;}
-.ws-action-item{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--bd);}
-.ws-action-item:last-child{border-bottom:none;}
-.ws-action-item input[type=checkbox]{accent-color:var(--g);width:14px;height:14px;cursor:pointer;flex-shrink:0;}
-.ws-action-txt{flex:1;font-size:12px;color:var(--tx);}
-.ws-action-txt.done{text-decoration:line-through;color:var(--dm);}
 .ws-owner{font-size:9px;font-weight:700;padding:1px 6px;border-radius:4px;flex-shrink:0;}
 .ws-owner.nimish{background:#EFF6FF;color:var(--nim);}
 .ws-owner.priyanka{background:#FDF2F8;color:var(--pri);}
@@ -761,6 +754,8 @@ var D = null;
 var wsData = {weeks: {}};
 var currentUser = CFG.u1;
 var editingTaskId = null;
+var editingHabitId = null;
+var editingWsItem = null;
 var activeBucket = 'all';
 var currentSort = 'priority';
 var activeFilters = new Set();
@@ -1591,7 +1586,7 @@ function getWeekDates(weekId) {
 }
 function initWsWeek(weekId) {
   if (!wsData.weeks[weekId]) {
-    wsData.weeks[weekId] = {items:{}, actions:[], dates:getWeekDates(weekId), closed:false, summary:''};
+    wsData.weeks[weekId] = {items:{}, dates:getWeekDates(weekId), closed:false, summary:''};
     D.wsBuckets.forEach(function(b) { var o={}; o[CFG.u1]=[]; if(!CFG.solo)o[CFG.u2]=[]; wsData.weeks[weekId].items[b.id]=o; });
     saveWs();
   }
@@ -1604,10 +1599,20 @@ function wsColHTML(bucketId, who, items, isClosed) {
     + '<span class="ws-col-lbl" style="color:' + dotColor + ';">' + label + '</span></div>';
   for (var i = 0; i < items.length; i++) {
     var item = items[i]; var carried = item.carried ? ' carried' : '';
+    var key = bucketId + '|' + who + '|' + i;
+    if (editingWsItem === key) {
+      html += '<div class="ws-item' + carried + '" style="gap:6px;">'
+        + '<input class="ws-add-input" id="wsEditIn-' + i + '" value="' + esc(item.text) + '" style="flex:1;"/>'
+        + '<button class="ws-add-save" data-bkt="' + bucketId + '" data-who="' + who + '" data-idx="' + i + '" onclick="wsSaveItemEdit(this.dataset.bkt,this.dataset.who,parseInt(this.dataset.idx))">Save</button>'
+        + '<button class="ws-add-cancel" onclick="cancelWsItemEdit()">&#10005;</button>'
+        + '</div>';
+      continue;
+    }
     var badge = item.carried ? '<span class="ws-carried-badge">&#8617; carried</span>' : '';
     var taskBadge = item.isTask ? '<span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;background:#A55EEA18;color:#A55EEA;flex-shrink:0;">&#10003; task</span>' : '';
+    var editBtn = isClosed ? '' : '<button class="ws-item-del" data-key="' + key + '" onclick="startWsItemEdit(this.dataset.key)" title="Edit">&#9998;</button>';
     var delBtn = isClosed ? '' : '<button class="ws-item-del" data-bkt="' + bucketId + '" data-who="' + who + '" data-idx="' + i + '" onclick="wsDeleteItem(this.dataset.bkt,this.dataset.who,parseInt(this.dataset.idx))">&#10005;</button>';
-    html += '<div class="ws-item' + carried + '"><span class="ws-item-txt">' + esc(item.text) + '</span>' + taskBadge + badge + delBtn + '</div>';
+    html += '<div class="ws-item' + carried + '"><span class="ws-item-txt">' + esc(item.text) + '</span>' + taskBadge + badge + editBtn + delBtn + '</div>';
   }
   if (!isClosed) {
     // Note input
@@ -1631,8 +1636,6 @@ function wsShowForm(bkt, who) { var f = el('wsForm-'+bkt+'-'+who); var i = el('w
 function wsHideForm(bkt, who) { var f = el('wsForm-'+bkt+'-'+who); if (f) f.style.display='none'; }
 function wsShowTaskForm(bkt, who) { var f = el('wsTaskForm-'+bkt+'-'+who); var i = el('wsTaskIn-'+bkt+'-'+who); if (f) f.style.display='flex'; if (i) i.focus(); }
 function wsHideTaskForm(bkt, who) { var f = el('wsTaskForm-'+bkt+'-'+who); if (f) f.style.display='none'; }
-function wsShowActForm(bkt) { var f = el('wsActForm-'+bkt); var b = el('wsActBtn-'+bkt); if (f) f.style.display='flex'; if (b) b.style.display='none'; var i = el('wsActIn-'+bkt); if (i) i.focus(); }
-function wsHideActForm(bkt) { var f = el('wsActForm-'+bkt); var b = el('wsActBtn-'+bkt); if (f) f.style.display='none'; if (b) b.style.display='block'; }
 function wsAddItem(bkt, who) {
   var inp = el('wsIn-'+bkt+'-'+who); if (!inp) return; var txt = inp.value.trim(); if (!txt) return;
   var week = wsData.weeks[wsCurrentWeek]; if (!week) return;
@@ -1675,44 +1678,19 @@ async function wsAddTask(bkt, who) {
   document.body.appendChild(feedbackEl);
   setTimeout(function() { if (feedbackEl.parentNode) feedbackEl.remove(); }, 2500);
 }
-function wsActionHTML(a) {
-  var ownerColor = a.owner === CFG.u1 ? CFG.u1Color : a.owner === CFG.u2 ? CFG.u2Color : '#A55EEA';
-  return '<div class="ws-action-item">'
-    + '<input type="checkbox" ' + (a.done?'checked':'') + ' data-aid="' + a.id + '" onchange="wsToggleAction(this.dataset.aid)" style="accent-color:#FF6B35;width:16px;height:16px;cursor:pointer;flex-shrink:0;"/>'
-    + '<span style="flex:1;font-size:12px;font-weight:500;color:var(--tx);' + (a.done?'text-decoration:line-through;opacity:.5;':'') + '">' + esc(a.text) + '</span>'
-    + '<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;background:' + ownerColor + '18;color:' + ownerColor + ';">' + a.owner + '</span>'
-    + '<button data-aid="' + a.id + '" onclick="wsDeleteAction(this.dataset.aid)" style="border:none;background:none;color:var(--dm);cursor:pointer;font-size:12px;padding:0 4px;">&#10005;</button>'
-    + '</div>';
-}
-function wsAddAction(bkt) {
-  var inp = el('wsActIn-'+bkt); if (!inp) return; var txt = inp.value.trim(); if (!txt) return;
-  var ownerEl = el('wsActOwner-'+bkt); var owner = ownerEl ? ownerEl.value : CFG.u1;
-  var week = wsData.weeks[wsCurrentWeek]; if (!week) return;
-  if (!week.actions) week.actions = [];
-  week.actions.push({id:String(Date.now()), text:txt, owner:owner, bucket:bkt, done:false, carried:false});
-  inp.value = ''; wsHideActForm(bkt); saveWs(); renderWsView();
-}
 function wsDeleteItem(bkt, who, idx) { var week = wsData.weeks[wsCurrentWeek]; if (!week) return; if (week.items[bkt]&&week.items[bkt][who]) week.items[bkt][who].splice(idx,1); saveWs(); renderWsView(); }
-function wsToggleAction(id) { var week = wsData.weeks[wsCurrentWeek]; if (!week||!week.actions) return; week.actions = week.actions.map(function(a) { return a.id===id?{id:a.id,text:a.text,owner:a.owner,bucket:a.bucket,done:!a.done,carried:a.carried}:a; }); saveWs(); renderWsView(); }
-function wsDeleteAction(id) { var week = wsData.weeks[wsCurrentWeek]; if (!week||!week.actions) return; week.actions = week.actions.filter(function(a) { return a.id!==id; }); saveWs(); renderWsView(); }
-function buildWsActForm(bid) {
-  var form = document.createElement('div'); form.className='ws-add-form'; form.id='wsActForm-'+bid; form.style.display='none';
-  var inp = document.createElement('input'); inp.className='ws-add-input'; inp.id='wsActIn-'+bid; inp.placeholder='Action item...';
-  inp.onkeydown = function(e) { if (e.key==='Enter') wsAddAction(bid); };
-  var sel = document.createElement('select'); sel.id='wsActOwner-'+bid;
-  sel.style.cssText = 'background:#fff;border:1px solid #F0E0D0;border-radius:8px;padding:7px 8px;font-size:12px;color:#1A0F06;outline:none;';
-  var _owners = CFG.solo ? [CFG.u1Name] : [CFG.u1Name, CFG.u2Name, 'Joint'];
-  _owners.forEach(function(l) { var o=document.createElement('option'); o.value=l.toLowerCase()===CFG.u1Name.toLowerCase()?CFG.u1:l.toLowerCase()===CFG.u2Name.toLowerCase()?CFG.u2:l.toLowerCase(); o.textContent=l; sel.appendChild(o); });
-  var sb = document.createElement('button'); sb.className='ws-add-save'; sb.textContent='Add'; sb.onclick=function() { wsAddAction(bid); };
-  var cb = document.createElement('button'); cb.className='ws-add-cancel'; cb.textContent='\u2715'; cb.onclick=function() { wsHideActForm(bid); };
-  form.append(inp, sel, sb, cb);
-  var ab = document.createElement('button'); ab.className='ws-add-btn'; ab.id='wsActBtn-'+bid; ab.textContent='+ Add action'; ab.onclick=function() { wsShowActForm(bid); };
-  return form.outerHTML + ab.outerHTML;
+function startWsItemEdit(key) { editingWsItem = key; renderWsView(); setTimeout(function(){ var i = el('wsEditIn-' + key.split('|')[2]); if (i) i.focus(); }, 50); }
+function cancelWsItemEdit() { editingWsItem = null; renderWsView(); }
+function wsSaveItemEdit(bkt, who, idx) {
+  var inp = el('wsEditIn-' + idx); if (!inp) return; var txt = inp.value.trim(); if (!txt) return;
+  var week = wsData.weeks[wsCurrentWeek]; if (!week) return;
+  if (week.items[bkt] && week.items[bkt][who] && week.items[bkt][who][idx]) week.items[bkt][who][idx].text = txt;
+  editingWsItem = null; saveWs(); renderWsView();
 }
 function renderWsView() {
   var week = wsData.weeks[wsCurrentWeek]; if (!week) return;
   var isClosed = week.closed || false;
-  var items = week.items || {}; var actions = week.actions || [];
+  var items = week.items || {};
   var wlbl = el('wsWeekLbl'); if (wlbl) wlbl.textContent = wsCurrentWeek;
   var wsub = el('wsWeekSub'); if (wsub) wsub.textContent = (week&&week.dates)||'';
   var wcs = el('wsCloseBtn'); if (wcs) wcs.textContent = isClosed ? '&#128275; Reopen' : '&#128274; Close Week';
@@ -1721,17 +1699,15 @@ function renderWsView() {
     var bItems = items[b.id] || {};
     var u1Items = bItems[CFG.u1] || [];
     var u2Items = CFG.solo ? [] : (bItems[CFG.u2] || []);
-    var bActions = actions.filter(function(a) { return a.bucket===b.id; });
-    var actHTML = bActions.length || !isClosed ? ('<div class="ws-actions"><div class="ws-action-hdr">ACTION ITEMS</div>' + bActions.map(wsActionHTML).join('') + (!isClosed?buildWsActForm(b.id):'') + '</div>') : '';
     var nc = u1Items.length; var pc = u2Items.length;
     return '<div class="ws-bucket">'
       + '<div class="ws-bkt-hdr" style="border-left:4px solid ' + b.color + ';">'
       + '<span style="font-size:20px;">' + b.icon + '</span>'
       + '<span class="ws-bkt-title">' + b.label + '</span>'
-      + '<span class="ws-bkt-count">' + (nc+pc) + ' notes &middot; ' + bActions.length + ' actions</span>'
+      + '<span class="ws-bkt-count">' + (nc+pc) + ' notes</span>'
       + '</div>'
       + '<div class="ws-cols">' + wsColHTML(b.id,CFG.u1,u1Items,isClosed) + (CFG.solo?'':wsColHTML(b.id,CFG.u2,u2Items,isClosed)) + '</div>'
-      + actHTML + '</div>';
+      + '</div>';
   }).join('');
   if (isClosed && week.summary) wbEl.innerHTML += '<div class="card" style="background:#F5F3FF;border-color:#DDD6FE;margin-top:12px;"><div class="slabel">AI SUMMARY</div><div style="font-size:13px;line-height:1.7;">' + esc(week.summary) + '</div></div>';
 }
@@ -1743,14 +1719,6 @@ function wsNavWeek(dir) {
 function closeWeek() {
   var week = wsData.weeks[wsCurrentWeek]; if (!week) return;
   week.closed = !week.closed;
-  if (week.closed) {
-    week.actions.filter(function(a) { return !a.done; }).forEach(function(a) {
-      var yw = wsCurrentWeek.split('-W'); var y = Number(yw[0]); var w = Number(yw[1]);
-      var d = new Date(y,0,1+((w-1)*7)+7); var nextId = getWeekId(d);
-      initWsWeek(nextId);
-      if (wsData.weeks[nextId]) wsData.weeks[nextId].actions.push({id:String(Date.now()),text:a.text,owner:a.owner,bucket:a.bucket,done:false,carried:true});
-    });
-  }
   saveWs(); renderWsView();
 }
 function wsExpandHistory(wid) { wsCurrentWeek = wid; nav('ws'); }
@@ -1761,15 +1729,12 @@ function renderWsHistory() {
   wh.innerHTML = weeks.map(function(wid) {
     var w = wsData.weeks[wid];
     var totalItems = Object.keys(w.items||{}).reduce(function(s,bk) { var bi=w.items[bk]||{}; var us=CFG.solo?[CFG.u1]:[CFG.u1,CFG.u2]; return s+us.reduce(function(ss,u){return ss+(bi[u]?bi[u].length:0);},0); }, 0);
-    var totalActions = w.actions ? w.actions.length : 0;
-    var doneActions = w.actions ? w.actions.filter(function(a) { return a.done; }).length : 0;
     var closedBadge = w.closed ? '<span style="font-size:10px;color:var(--g);font-weight:600;">&#10003; Closed</span>' : '';
     return '<div class="ws-hist-item" data-wid="' + wid + '" onclick="wsExpandHistory(this.dataset.wid)">'
       + '<div style="display:flex;align-items:center;gap:10px;">'
       + '<div style="flex:1;"><div class="ws-hist-week">' + wid + ' ' + closedBadge + '</div>'
       + '<div class="ws-hist-dates">' + (w.dates||'') + '</div></div>'
-      + '<div class="ws-hist-stats"><div class="ws-hist-stat"><span>' + totalItems + '</span> notes</div>'
-      + '<div class="ws-hist-stat"><span>' + doneActions + '/' + totalActions + '</span> actions</div></div>'
+      + '<div class="ws-hist-stats"><div class="ws-hist-stat"><span>' + totalItems + '</span> notes</div></div>'
       + '</div></div>';
   }).join('');
 }
@@ -2195,13 +2160,6 @@ async function sbLoad() {
                 lw.items[bktId][who] = lList;
               });
             });
-            // Merge actions (union by id)
-            var rActs = rw.actions || [];
-            var lActs = lw.actions || [];
-            rActs.forEach(function(ra) {
-              if (!lActs.some(function(la) { return la.id === ra.id; })) lActs.push(ra);
-            });
-            lw.actions = lActs;
             if (!lw.summary && rw.summary) lw.summary = rw.summary;
             if (!lw.closed && rw.closed) lw.closed = rw.closed;
           }
@@ -2284,6 +2242,7 @@ function renderHabits() {
     if (!myHabits.length) { list.innerHTML = ''; return; }
     var hist7 = habitDateRange(7);
     list.innerHTML = myHabits.map(function(h) {
+      if (editingHabitId === h.id) return habEditRowHTML(h);
       var isDone = !!log[h.id];
       var streak = getStreak(h.id);
       var dots = hist7.map(function(k) {
@@ -2298,7 +2257,8 @@ function renderHabits() {
           + (streak>0 ? '<div class="hab-streak">&#128293; '+streak+'d</div>' : '<div class="hab-streak" style="color:var(--mu);">Start!</div>')
           + '<div class="hab-hist">'+dots+'</div>'
         + '</div>'
-        + '<button onclick="event.stopPropagation();deleteHabit(\''+h.id+'\')" style="background:none;border:none;color:var(--mu);font-size:16px;cursor:pointer;padding:4px 6px;margin-left:4px;" title="Delete">&#215;</button>'
+        + '<button onclick="event.stopPropagation();startHabitEdit(\''+h.id+'\')" style="background:none;border:none;color:var(--mu);font-size:14px;cursor:pointer;padding:4px 6px;" title="Edit">&#9998;</button>'
+        + '<button onclick="event.stopPropagation();deleteHabit(\''+h.id+'\')" style="background:none;border:none;color:var(--mu);font-size:16px;cursor:pointer;padding:4px 6px;margin-left:2px;" title="Delete">&#215;</button>'
         + '</div>';
     }).join('');
   } catch(err) {
@@ -2331,6 +2291,26 @@ function deleteHabit(habId) {
   // Remove from log too
   Object.keys(D.habitLog).forEach(function(k){ if(D.habitLog[k]) delete D.habitLog[k][habId]; });
   saveData(); renderHabits();
+}
+function startHabitEdit(habId) { editingHabitId = habId; renderHabits(); setTimeout(function(){ var i = el('hEditName-'+habId); if (i) i.focus(); }, 50); }
+function cancelHabitEdit() { editingHabitId = null; renderHabits(); }
+function saveHabitEdit(habId) {
+  var nm = el('hEditName-'+habId); var ic = el('hEditIcon-'+habId); var cl = el('hEditColor-'+habId);
+  if (!nm) return; var name = nm.value.trim(); if (!name) return;
+  var h = D.habits.find(function(x){return x.id===habId;}); if (!h) return;
+  h.name = name;
+  if (ic) h.icon = ic.value.trim() || h.icon;
+  if (cl) h.color = cl.value;
+  editingHabitId = null; saveData(); renderHabits();
+}
+function habEditRowHTML(h) {
+  return '<div class="hab-card" style="cursor:default;flex-wrap:wrap;gap:8px;">'
+    + '<input id="hEditIcon-' + h.id + '" value="' + esc(h.icon) + '" readonly onclick="openEmojiPicker(\'hEditIcon-' + h.id + '\')" style="width:46px;text-align:center;cursor:pointer;border:1px solid var(--bd);border-radius:8px;padding:8px 4px;font-size:18px;font-family:inherit;outline:none;"/>'
+    + '<input id="hEditName-' + h.id + '" value="' + esc(h.name) + '" style="flex:1;min-width:140px;border:1px solid var(--bd);border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;outline:none;"/>'
+    + '<input type="color" id="hEditColor-' + h.id + '" value="' + (h.color||'#10B981') + '" style="width:40px;height:36px;border:1px solid var(--bd);border-radius:8px;cursor:pointer;padding:2px;"/>'
+    + '<button data-hid="' + h.id + '" onclick="saveHabitEdit(this.dataset.hid)" style="background:#FF6B35;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;">Save</button>'
+    + '<button onclick="cancelHabitEdit()" style="border:1px solid var(--bd);border-radius:8px;padding:8px 12px;font-size:12px;cursor:pointer;background:none;">Cancel</button>'
+    + '</div>';
 }
 function toggleHabitNotif(checked) {
   D.settings.habitNotif = checked;
