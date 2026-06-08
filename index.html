@@ -2123,7 +2123,14 @@ async function sbLoad() {
           var cleanSettings = Object.assign({}, remote.settings);
           delete cleanSettings._wsBuckets; delete cleanSettings._habits; delete cleanSettings._habitLog;
           D.settings = Object.assign({}, D.settings, cleanSettings);
-          if (_wb && _wb.length) D.wsBuckets = _wb;
+          // Merge bucket definitions by id (union — never discard either side's buckets)
+          if (Array.isArray(_wb)) {
+            var localWbIds = (D.wsBuckets||[]).map(function(b){return b.id;});
+            _wb.forEach(function(rb) {
+              var wi = localWbIds.indexOf(rb.id);
+              if (wi === -1) { D.wsBuckets.push(rb); localWbIds.push(rb.id); }
+            });
+          }
           // Merge habit definitions by id (keep habits from both sides)
           if (Array.isArray(_hab)) {
             var localHabIds = (D.habits||[]).map(function(h){return h.id;});
@@ -2159,6 +2166,15 @@ async function sbLoad() {
       var warr = await wr.json();
       if (warr && warr[0] && warr[0].data) {
         var remoteWs = warr[0].data;
+        // Merge shared bucket definitions by id (union — Weekly Sync buckets are common to both users)
+        if (Array.isArray(remoteWs.buckets)) {
+          var sharedWbIds = (D.wsBuckets||[]).map(function(b){return b.id;});
+          remoteWs.buckets.forEach(function(rb) {
+            var si = sharedWbIds.indexOf(rb.id);
+            if (si === -1) { D.wsBuckets.push(rb); sharedWbIds.push(rb.id); }
+            else D.wsBuckets[si] = rb;
+          });
+        }
         // Merge remote weeks into local — never discard local items
         Object.keys(remoteWs.weeks || {}).forEach(function(wid) {
           var rw = remoteWs.weeks[wid];
@@ -2202,7 +2218,7 @@ async function sbSaveWs() {
     await fetch(SB_URL+'/rest/v1/lcc_weekly', {
       method: 'POST',
       headers: {'Content-Type':'application/json',apikey:SB_ANON,Authorization:'Bearer '+SB_ANON,Prefer:'resolution=merge-duplicates,return=minimal'},
-      body: JSON.stringify({id:CFG.u1,data:wsData,updated_at:new Date().toISOString()})
+      body: JSON.stringify({id:CFG.u1,data:Object.assign({},wsData,{buckets:D.wsBuckets}),updated_at:new Date().toISOString()})
     });
   } catch(e) {}
 }
@@ -2444,7 +2460,7 @@ function updateSetting(key, val) {
 function updateWsBucket(id, key, val) {
   var b = D.wsBuckets.find(function(bk){return bk.id===id;});
   if (b) b[key] = val;
-  saveData(); populateSidebar();
+  saveData(); sbSaveWs(); populateSidebar();
 }
 function addWsBucket() {
   var ic = el('wsNbIc'); var lbl = el('wsNbLbl'); var clr = el('wsNbClr');
@@ -2452,7 +2468,7 @@ function addWsBucket() {
   if (!label) return;
   D.wsBuckets.push({id:'wsb'+Date.now(), label:label, icon:ic?ic.value:'📌', color:clr?clr.value:'#8B5CF6'});
   if (lbl) lbl.value = '';
-  saveData(); populateSettings();
+  saveData(); sbSaveWs(); populateSettings();
 }
 function exportData() {
   var json = JSON.stringify({tasks:D.tasks, buckets:D.buckets, settings:D.settings, moods:D.moods, wsBuckets:D.wsBuckets, wsData:wsData}, null, 2);
