@@ -292,6 +292,13 @@ button{cursor:pointer;}
 /* Glass morphism on dark skins */
 .skin-cosmos .card,.skin-cosmos .task-row,.skin-cosmos .ws-bucket,.skin-cosmos .ins-stat,
 .skin-midnight .card,.skin-midnight .task-row,.skin-midnight .ws-bucket,.skin-midnight .ins-stat{backdrop-filter:blur(16px) saturate(160%)!important;-webkit-backdrop-filter:blur(16px) saturate(160%)!important;}
+.goal-bucket-section{margin-bottom:18px;}
+.goal-bucket-hdr{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:800;margin-bottom:8px;color:var(--tx);}
+.goal-row{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:10px 14px;margin-bottom:6px;display:flex;align-items:center;gap:10px;box-shadow:var(--shadow-xs);}
+.goal-row.done .goal-txt{text-decoration:line-through;color:var(--mu);}
+.goal-txt{flex:1;font-size:13px;font-weight:600;color:var(--tx);}
+.goal-icon-btn{border:none;background:none;color:var(--mu);cursor:pointer;font-size:13px;padding:4px;flex-shrink:0;}
+.goal-icon-btn:hover{color:var(--ac);}
 .repeat-days-row{display:flex;gap:4px;margin-top:6px;}
 .rdbtn{width:28px;height:28px;border-radius:50%;border:1px solid var(--bd);background:var(--sf);color:var(--mu);font-size:11px;font-weight:700;cursor:pointer;transition:all .15s;}
 .rdbtn.active{background:var(--ac);color:#fff;border-color:var(--ac);}
@@ -430,6 +437,7 @@ button{cursor:pointer;}
       <button class="nav-btn" onclick="nav('cal')" id="nb-cal" data-nav="cal"><span class="nav-ic">&#128197;</span>Calendar</button>
       <button class="nav-btn" onclick="nav('insights')" id="nb-insights" data-nav="insights"><span class="nav-ic">&#9672;</span>Insights</button>
       <button class="nav-btn" onclick="nav('habits')" id="nb-habits" data-nav="habits"><span class="nav-ic">&#128293;</span>Habits</button>
+      <button class="nav-btn" onclick="nav('goals')" id="nb-goals" data-nav="goals"><span class="nav-ic">&#127919;</span>Goals</button>
       <button class="nav-btn" onclick="nav('settings')" id="nb-config" data-nav="settings"><span class="nav-ic">&#8862;</span>Settings</button>
       <div class="sb-section">
         <div class="sb-sec-lbl">MY BUCKETS</div>
@@ -729,6 +737,7 @@ button{cursor:pointer;}
           <input id="habColorIn" type="color" value="#10B981" style="width:44px;height:42px;border-radius:8px;border:1px solid var(--bd);cursor:pointer;padding:2px;flex-shrink:0;"/>
           <span style="font-size:12px;color:var(--mu);align-self:center;flex:1;">Tap icon to pick</span>
         </div>
+        <select id="habBktIn" class="set-input" style="width:100%;margin-bottom:10px;"></select>
         <div style="display:flex;gap:8px;">
           <button onclick="saveNewHabit()" class="btn" style="flex:1;background:var(--ac);color:#fff;font-size:13px;">Save</button>
           <button onclick="closeAddHabit()" class="btn btn-sec" style="flex:1;font-size:13px;">Cancel</button>
@@ -749,6 +758,23 @@ button{cursor:pointer;}
         <div id="habNotifStatus" style="font-size:11px;color:var(--mu);margin-top:6px;"></div>
       </div>
     </div>
+    <div class="view" id="view-goals">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div style="font-size:22px;font-weight:800;letter-spacing:-.5px;">&#127919; Long-term Goals</div>
+        <button onclick="openAddGoal()" style="background:var(--ac);color:#fff;border:none;border-radius:12px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">+ Add Goal</button>
+      </div>
+      <div id="addGoalForm" style="display:none" class="add-form">
+        <div class="slabel" style="color:var(--ac)">NEW GOAL</div>
+        <input type="text" id="newGoalTxt" placeholder="What's the long-term goal?" onkeydown="if(event.key==='Enter')submitGoal()"/>
+        <div class="form-row">
+          <select id="newGoalBkt"></select>
+          <button class="btn btn-primary btn-sm" onclick="submitGoal()">Save</button>
+          <button class="btn btn-sec btn-sm" onclick="closeAddGoal()">Cancel</button>
+        </div>
+        <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--mu);font-weight:700;margin-top:6px;cursor:pointer;"><input type="checkbox" id="newGoalJoint" style="accent-color:#A55EEA;width:14px;height:14px;cursor:pointer;"/> Shared goal (both of us)</label>
+      </div>
+      <div id="goalsBody"></div>
+    </div>
   </div>
 </div>
 <div class="mob-nav" id="mobNav" style="display:none;">
@@ -757,6 +783,7 @@ button{cursor:pointer;}
   <button class="mob-btn" id="mb-sync" onclick="nav('ws')" data-nav="ws"><span class="mob-ic">&#128145;</span>Sync</button>
   <button class="mob-btn" id="mb-cal" onclick="nav('cal')" data-nav="cal"><span class="mob-ic">&#128197;</span>Cal</button>
   <button class="mob-btn" id="mb-habits" onclick="nav('habits')" data-nav="habits"><span class="mob-ic">&#128293;</span>Habits</button>
+  <button class="mob-btn" id="mb-goals" onclick="nav('goals')" data-nav="goals"><span class="mob-ic">&#127919;</span>Goals</button>
   <button class="mob-btn" id="mb-insights" onclick="nav('insights')" data-nav="insights"><span class="mob-ic">&#9672;</span>Insights</button>
   <button class="mob-btn" id="mb-config" onclick="nav('settings')" data-nav="settings"><span class="mob-ic">&#8862;</span>Settings</button>
 </div>
@@ -813,6 +840,7 @@ var calMode = 'month';
 var calDate = new Date();
 var editingHabitId = null;
 var editingWsItem = null;
+var editingGoalId = null;
 var activeBucket = 'all';
 var currentSort = 'priority';
 var activeFilters = new Set();
@@ -1010,8 +1038,16 @@ function targetBadge(t) {
   var now = new Date(); now.setHours(0,0,0,0);
   var over = td < now;
   var mo = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  var rpt = t.repeat ? ' &#8635;' : '';
-  return '<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:12px;background:' + (over ? '#FEE2E2' : '#FFF3E8') + ';color:' + (over ? '#EF4444' : '#F59E0B') + ';">&#128197; ' + td.getDate() + ' ' + mo[td.getMonth()] + rpt + '</span>';
+  return '<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:12px;background:' + (over ? '#FEE2E2' : '#FFF3E8') + ';color:' + (over ? '#EF4444' : '#F59E0B') + ';">&#128197; ' + td.getDate() + ' ' + mo[td.getMonth()] + '</span>';
+}
+function repeatBadge(t) {
+  if (!t.repeat) return '';
+  var lbl = t.repeat.charAt(0).toUpperCase() + t.repeat.slice(1);
+  if (t.repeat === 'weekly' && Array.isArray(t.repeatDays) && t.repeatDays.length) {
+    var dayLbls = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    lbl = t.repeatDays.map(function(d){return dayLbls[d];}).join('/');
+  }
+  return '<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:12px;background:#EEF2FF;color:#6366F1;">&#128257; ' + lbl + '</span>';
 }
 
 //  REPEAT-ON-DAYS PICKER
@@ -1065,6 +1101,7 @@ function tSwipeRowHTML(t, isDone) {
     + '<div style="display:flex;align-items:center;gap:5px;margin-top:4px;flex-wrap:wrap;">'
     + '<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:12px;background:' + b.color + '18;color:' + b.color + ';">' + b.label + '</span>'
     + targetBadge(t)
+    + repeatBadge(t)
     + (t.fromSync ? '<span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px;background:#FFF0FF;color:#A55EEA;">&#128279; Sync</span>' : '')
     + '</div></div>'
     + '<span style="font-size:9px;font-weight:800;padding:2px 7px;border-radius:12px;background:' + m.color + '15;color:' + m.color + ';flex-shrink:0;">' + t.priority + '</span>'
@@ -1262,6 +1299,7 @@ function tRowHTML(t, isDone) {
     + '<span style="font-size:16px;flex-shrink:0;">' + b.icon + '</span>'
     + '<span style="flex:1;font-size:14px;font-weight:600;color:' + (isDone?'#C4A882':'#1C0F06') + ';' + (isDone?'text-decoration:line-through;':'') + 'line-height:1.4;">' + esc(t.text) + '</span>'
     + (t.target ? targetBadge(t) : '')
+    + repeatBadge(t)
     + (t.fromSync ? '<span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px;background:#FFF0FF;color:#A55EEA;">&#128279; Sync</span>' : '')
     + '<span style="font-size:9px;font-weight:800;padding:2px 8px;border-radius:20px;background:' + m.color + '15;color:' + m.color + ';">' + t.priority + '</span>'
     + '<button data-tid="' + t.id + '" onclick="startEdit(parseInt(this.dataset.tid))" style="border:none;background:none;color:#C4A882;cursor:pointer;font-size:14px;">&#9998;</button>'
@@ -1517,6 +1555,7 @@ function nav(v) {
   else if (v === 'cal') renderCalendar();
   else if (v === 'insights') renderInsights();
   else if (v === 'habits') renderHabits();
+  else if (v === 'goals') renderGoals();
   else if (v === 'settings') populateSettings();
 }
 function initDate() {
@@ -2279,6 +2318,7 @@ function bootApp() {
   if (!D.wsBuckets) D.wsBuckets = DEFAULT_WS_BUCKETS.slice();
   if (!D.habits) D.habits = [];
   if (!D.habitLog) D.habitLog = {};
+  if (!D.goals) D.goals = [];
   try { var ws = localStorage.getItem(WS_STORAGE); if (ws) wsData = JSON.parse(ws); } catch(e) {}
   initDate(); applySkin(getUserSkin()); applyLayout(getUserLayout());
   wsCurrentWeek = getWeekId(new Date()); initWsWeek(wsCurrentWeek);
@@ -2334,7 +2374,7 @@ async function sbSave() {
     // Prune habitLog to last 60 days before saving
     var cutoff = new Date(); cutoff.setDate(cutoff.getDate()-60);
     var prunedLog = {}; Object.keys(D.habitLog||{}).forEach(function(k){ if(new Date(k)>=cutoff) prunedLog[k]=D.habitLog[k]; });
-    var settingsToSave = Object.assign({}, D.settings, {_wsBuckets: D.wsBuckets, _habits: D.habits, _habitLog: prunedLog});
+    var settingsToSave = Object.assign({}, D.settings, {_wsBuckets: D.wsBuckets, _habits: D.habits, _habitLog: prunedLog, _goals: D.goals});
     var payload = {id:currentUser, tasks:D.tasks, buckets:D.buckets, moods:D.moods, settings:settingsToSave, updated_at:new Date().toISOString()};
     setSyncStatus('saving');
     var res = await fetch(SB_URL+'/rest/v1/lcc_data', {method:'POST', headers:{'Content-Type':'application/json',apikey:SB_ANON,Authorization:'Bearer '+SB_ANON,Prefer:'resolution=merge-duplicates,return=minimal'}, body:JSON.stringify(payload)});
@@ -2364,8 +2404,9 @@ async function sbLoad() {
           var _wb = remote.settings._wsBuckets;
           var _hab = remote.settings._habits;
           var _habLog = remote.settings._habitLog;
+          var _goals = remote.settings._goals;
           var cleanSettings = Object.assign({}, remote.settings);
-          delete cleanSettings._wsBuckets; delete cleanSettings._habits; delete cleanSettings._habitLog;
+          delete cleanSettings._wsBuckets; delete cleanSettings._habits; delete cleanSettings._habitLog; delete cleanSettings._goals;
           D.settings = Object.assign({}, D.settings, cleanSettings);
           // Merge bucket definitions by id (union — never discard either side's buckets)
           if (Array.isArray(_wb)) {
@@ -2389,6 +2430,16 @@ async function sbLoad() {
             Object.keys(_habLog).forEach(function(dt) {
               if (!D.habitLog[dt]) D.habitLog[dt] = {};
               Object.assign(D.habitLog[dt], _habLog[dt]);
+            });
+          }
+          // Merge long-term goals by id (keep goals from both sides)
+          if (Array.isArray(_goals)) {
+            if (!D.goals) D.goals = [];
+            var localGoalIds = D.goals.map(function(g){return g.id;});
+            _goals.forEach(function(rg) {
+              var gi = localGoalIds.indexOf(rg.id);
+              if (gi === -1) D.goals.push(rg);
+              else D.goals[gi] = rg;
             });
           }
         }
@@ -2531,10 +2582,12 @@ function renderHabits() {
         var checked = D.habitLog[k] && D.habitLog[k][h.id];
         return '<div class="hab-dot'+(checked?' done':'')+'" title="'+k+'"></div>';
       }).join('');
+      var hBkt = h.bucket ? D.buckets.find(function(bk){return bk.id===h.bucket;}) : null;
+      var bktBadge = hBkt ? '<span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;background:var(--sf2);color:var(--mu);margin-left:6px;">'+hBkt.icon+' '+esc(hBkt.label)+'</span>' : '';
       return '<div class="hab-card'+(isDone?' done':'')+'" onclick="toggleHabit(\''+h.id+'\')" style="border-color:'+(isDone?h.color||'var(--ac)':'var(--bd)')+';">'
         + '<div class="hab-check">&#10003;</div>'
         + '<div class="hab-icon">'+h.icon+'</div>'
-        + '<div class="hab-name">'+h.name+'</div>'
+        + '<div class="hab-name">'+h.name+bktBadge+'</div>'
         + '<div class="hab-meta">'
           + (streak>0 ? '<div class="hab-streak">&#128293; '+streak+'d</div>' : '<div class="hab-streak" style="color:var(--mu);">Start!</div>')
           + '<div class="hab-hist">'+dots+'</div>'
@@ -2556,15 +2609,19 @@ function toggleHabit(habId) {
   vibrate([15]);
   saveData(); renderHabits();
 }
-function openAddHabit() { var f=el('addHabForm'); if(f){f.style.display='block'; var ni=el('habNameIn'); if(ni)ni.focus();} }
+function openAddHabit() {
+  var f=el('addHabForm'); if(f){f.style.display='block'; var ni=el('habNameIn'); if(ni)ni.focus();}
+  var bs = el('habBktIn'); if (bs && D) bs.innerHTML = D.buckets.map(function(b) { return '<option value="' + b.id + '">' + b.icon + ' ' + b.label + '</option>'; }).join('');
+}
 function closeAddHabit() { var f=el('addHabForm'); if(f)f.style.display='none'; var ni=el('habNameIn'); if(ni)ni.value=''; var ii=el('habIconIn'); if(ii)ii.value=''; }
 function saveNewHabit() {
-  var nm = el('habNameIn'); var ic = el('habIconIn'); var cl = el('habColorIn');
+  var nm = el('habNameIn'); var ic = el('habIconIn'); var cl = el('habColorIn'); var bk = el('habBktIn');
   var name = (nm&&nm.value.trim()) || '';
   if (!name) { if(nm)nm.focus(); return; }
   var icon = (ic&&ic.value.trim()) || '⭐';
   var color = (cl&&cl.value) || '#10B981';
-  D.habits.push({id:'hab'+Date.now(), name:name, icon:icon, color:color, owner:currentUser});
+  var bucket = bk&&bk.value ? bk.value : null;
+  D.habits.push({id:'hab'+Date.now(), name:name, icon:icon, color:color, bucket:bucket, owner:currentUser});
   saveData(); closeAddHabit(); renderHabits();
 }
 function deleteHabit(habId) {
@@ -2577,19 +2634,22 @@ function deleteHabit(habId) {
 function startHabitEdit(habId) { editingHabitId = habId; renderHabits(); setTimeout(function(){ var i = el('hEditName-'+habId); if (i) i.focus(); }, 50); }
 function cancelHabitEdit() { editingHabitId = null; renderHabits(); }
 function saveHabitEdit(habId) {
-  var nm = el('hEditName-'+habId); var ic = el('hEditIcon-'+habId); var cl = el('hEditColor-'+habId);
+  var nm = el('hEditName-'+habId); var ic = el('hEditIcon-'+habId); var cl = el('hEditColor-'+habId); var bk = el('hEditBkt-'+habId);
   if (!nm) return; var name = nm.value.trim(); if (!name) return;
   var h = D.habits.find(function(x){return x.id===habId;}); if (!h) return;
   h.name = name;
   if (ic) h.icon = ic.value.trim() || h.icon;
   if (cl) h.color = cl.value;
+  if (bk) h.bucket = bk.value || null;
   editingHabitId = null; saveData(); renderHabits();
 }
 function habEditRowHTML(h) {
+  var bktOpts = '<option value="">No bucket</option>' + D.buckets.map(function(bk){ return '<option value="'+bk.id+'"'+(h.bucket===bk.id?' selected':'')+'>'+bk.icon+' '+bk.label+'</option>'; }).join('');
   return '<div class="hab-card" style="cursor:default;flex-wrap:wrap;gap:8px;">'
     + '<input id="hEditIcon-' + h.id + '" value="' + esc(h.icon) + '" readonly onclick="openEmojiPicker(\'hEditIcon-' + h.id + '\')" style="width:46px;text-align:center;cursor:pointer;border:1px solid var(--bd);border-radius:8px;padding:8px 4px;font-size:18px;font-family:inherit;outline:none;"/>'
     + '<input id="hEditName-' + h.id + '" value="' + esc(h.name) + '" style="flex:1;min-width:140px;border:1px solid var(--bd);border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;outline:none;"/>'
     + '<input type="color" id="hEditColor-' + h.id + '" value="' + (h.color||'#10B981') + '" style="width:40px;height:36px;border:1px solid var(--bd);border-radius:8px;cursor:pointer;padding:2px;"/>'
+    + '<select id="hEditBkt-' + h.id + '" style="border:1px solid var(--bd);border-radius:8px;padding:8px 8px;font-size:12px;font-family:inherit;outline:none;">' + bktOpts + '</select>'
     + '<button data-hid="' + h.id + '" onclick="saveHabitEdit(this.dataset.hid)" style="background:#FF6B35;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;">Save</button>'
     + '<button onclick="cancelHabitEdit()" style="border:1px solid var(--bd);border-radius:8px;padding:8px 12px;font-size:12px;cursor:pointer;background:none;">Cancel</button>'
     + '</div>';
@@ -2631,6 +2691,77 @@ async function scheduleHabitReminder(reg) {
   if (!sw) return;
   sw.postMessage({ type: 'SCHEDULE_HABIT', msUntil: msUntil,
     title: '🔥 Habit Check-in', body: 'Take 30 seconds to mark today\'s habits!' });
+}
+
+//  LONG-TERM GOALS
+function openAddGoal() {
+  var f = el('addGoalForm'); if (f) f.style.display = 'block';
+  var sel = el('newGoalBkt'); if (sel && D) sel.innerHTML = D.buckets.map(function(b) { return '<option value="' + b.id + '">' + b.icon + ' ' + b.label + '</option>'; }).join('');
+  setTimeout(function() { var i = el('newGoalTxt'); if (i) i.focus(); }, 80);
+}
+function closeAddGoal() {
+  var f = el('addGoalForm'); if (f) f.style.display = 'none';
+  var i = el('newGoalTxt'); if (i) i.value = '';
+  var j = el('newGoalJoint'); if (j) j.checked = false;
+}
+function submitGoal() {
+  var i = el('newGoalTxt'); var b = el('newGoalBkt'); var j = el('newGoalJoint');
+  if (!i || !i.value.trim()) return;
+  if (currentUser === 'guest') { closeAddGoal(); return; }
+  if (!D.goals) D.goals = [];
+  D.goals.push({id:Date.now(), text:i.value.trim(), bucket:b?b.value:(D.buckets[0]||{id:'misc'}).id, owner:(j&&j.checked)?'joint':currentUser, done:false, created:Date.now()});
+  closeAddGoal(); saveData(); renderGoals();
+}
+function toggleGoal(id) {
+  var g = (D.goals||[]).find(function(x){return x.id===id;}); if (!g) return;
+  g.done = !g.done; saveData(); renderGoals();
+}
+function deleteGoal(id) {
+  if (!confirm('Delete this goal?')) return;
+  D.goals = (D.goals||[]).filter(function(x){return x.id!==id;});
+  saveData(); renderGoals();
+}
+function startGoalEdit(id) { editingGoalId = id; renderGoals(); setTimeout(function(){ var i = el('goalEditTxt-'+id); if (i) i.focus(); }, 50); }
+function cancelGoalEdit() { editingGoalId = null; renderGoals(); }
+function saveGoalEdit(id) {
+  var i = el('goalEditTxt-'+id); var b = el('goalEditBkt-'+id);
+  if (!i) return; var txt = i.value.trim(); if (!txt) return;
+  var g = (D.goals||[]).find(function(x){return x.id===id;}); if (!g) return;
+  g.text = txt; if (b) g.bucket = b.value;
+  editingGoalId = null; saveData(); renderGoals();
+}
+function goalRowHTML(g) {
+  var b = D.buckets.find(function(bk){return bk.id===g.bucket;}) || {icon:'&#8226;', label:g.bucket};
+  if (editingGoalId === g.id) {
+    var bktOpts = D.buckets.map(function(bk){ return '<option value="'+bk.id+'"'+(g.bucket===bk.id?' selected':'')+'>'+bk.icon+' '+bk.label+'</option>'; }).join('');
+    return '<div class="goal-row" style="flex-wrap:wrap;gap:6px;">'
+      + '<input id="goalEditTxt-'+g.id+'" value="'+esc(g.text)+'" style="flex:1;min-width:160px;border:1px solid var(--bd);border-radius:8px;padding:6px 10px;font-size:13px;font-family:Nunito,sans-serif;outline:none;"/>'
+      + '<select id="goalEditBkt-'+g.id+'" style="border:1px solid var(--bd);border-radius:8px;padding:6px 8px;font-size:12px;outline:none;">'+bktOpts+'</select>'
+      + '<button data-gid="'+g.id+'" onclick="saveGoalEdit(parseInt(this.dataset.gid))" style="background:var(--ac);color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;">Save</button>'
+      + '<button onclick="cancelGoalEdit()" style="border:1px solid var(--bd);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;background:var(--sf);color:var(--tx);">Cancel</button>'
+      + '</div>';
+  }
+  var ownerBadge = g.owner === 'joint' ? '<span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;background:#A55EEA18;color:#A55EEA;flex-shrink:0;">together</span>' : '';
+  return '<div class="goal-row'+(g.done?' done':'')+'">'
+    + '<input type="checkbox" '+(g.done?'checked':'')+' data-gid="'+g.id+'" onchange="toggleGoal(parseInt(this.dataset.gid))" style="accent-color:var(--ac);width:18px;height:18px;cursor:pointer;flex-shrink:0;"/>'
+    + '<span class="goal-txt">'+esc(g.text)+'</span>'
+    + ownerBadge
+    + '<button class="goal-icon-btn" data-gid="'+g.id+'" onclick="startGoalEdit(parseInt(this.dataset.gid))" title="Edit">&#9998;</button>'
+    + '<button class="goal-icon-btn" data-gid="'+g.id+'" onclick="deleteGoal(parseInt(this.dataset.gid))" title="Delete">&#10005;</button>'
+    + '</div>';
+}
+function renderGoals() {
+  var body = el('goalsBody'); if (!body) return;
+  var goals = (D.goals||[]).filter(function(g){ return !g.owner || g.owner===currentUser || g.owner==='joint'; });
+  if (!goals.length) { body.innerHTML = '<div style="text-align:center;color:var(--mu);font-size:13px;padding:50px 0;">No long-term goals yet. Add one to start tracking your big-picture wins, organized by bucket.</div>'; return; }
+  var html = '';
+  D.buckets.forEach(function(b) {
+    var bg = goals.filter(function(g){return g.bucket===b.id;});
+    if (!bg.length) return;
+    html += '<div class="goal-bucket-section"><div class="goal-bucket-hdr"><span>'+b.icon+'</span>'+esc(b.label)+'</div>'
+      + bg.map(goalRowHTML).join('') + '</div>';
+  });
+  body.innerHTML = html || '<div style="text-align:center;color:var(--mu);font-size:13px;padding:50px 0;">No long-term goals yet.</div>';
 }
 async function forceSyncNow() {
   var div = el('syncHealthDiv');
