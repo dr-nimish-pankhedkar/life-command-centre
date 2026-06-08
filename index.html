@@ -2059,7 +2059,7 @@ function showApp() {
   var ls = el('lockScreen'); if (ls) ls.style.display = 'none';
   var ld = el('loading'); if (ld) ld.style.display = 'none';
   var ml = el('mainLayout'); if (ml) ml.style.display = 'flex';
-  var mn = el('mobNav'); if (mn) mn.style.display = 'flex';
+  var mn = el('mobNav'); if (mn) mn.style.display = window.matchMedia('(max-width:640px)').matches ? 'flex' : 'none';
   var su = el('sbUser'); if (su) su.textContent = currentUser===CFG.u1?CFG.u1Name:CFG.u2Name;
   nav('board');
 }
