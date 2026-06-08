@@ -219,6 +219,8 @@ button{cursor:pointer;}
 .bkt-nm-in{flex:1;background:var(--sf);border:1px solid var(--bd);border-radius:6px;padding:6px 10px;font-size:13px;color:var(--tx);outline:none;}
 .color-dot{width:24px;height:24px;border-radius:50%;flex-shrink:0;}
 .color-in{width:32px;height:32px;border-radius:6px;border:1px solid var(--bd);cursor:pointer;padding:2px;background:none;}
+.bkt-del-btn{background:none;border:none;color:var(--dm);font-size:14px;padding:6px 8px;cursor:pointer;border-radius:6px;flex-shrink:0;transition:all .15s;}
+.bkt-del-btn:hover{background:#FEE2E2;color:#EF4444;}
 .skin-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:12px;}
 .skin-opt{border-radius:14px;overflow:hidden;cursor:pointer;border:2px solid transparent;transition:all .2s cubic-bezier(.4,0,.2,1);box-shadow:var(--shadow-sm);}
 .skin-opt:hover{transform:translateY(-2px);box-shadow:var(--shadow-md);}
@@ -1822,6 +1824,7 @@ function populateSettings() {
         + '<input class="bkt-ic-in" id="bic_'+b.id+'" value="'+b.icon+'" data-bid="'+b.id+'" onclick="openEmojiPicker(\'bic_'+b.id+'\')" oninput="updateBucket(this.dataset.bid,\'icon\',this.value)" readonly/>'
         + '<input class="bkt-nm-in" value="'+b.label+'" data-bid="'+b.id+'" oninput="updateBucket(this.dataset.bid,\'label\',this.value)"/>'
         + '<input type="color" class="col-in" value="'+b.color+'" data-bid="'+b.id+'" oninput="updateBucket(this.dataset.bid,\'color\',this.value)"/>'
+        + '<button class="bkt-del-btn" data-bid="'+b.id+'" onclick="deleteBucket(this.dataset.bid)" title="Delete bucket">&#10005;</button>'
         + '</div>';
     }).join('');
   }
@@ -1832,6 +1835,7 @@ function populateSettings() {
         + '<input class="bkt-ic-in" id="wic_'+b.id+'" value="'+b.icon+'" data-bid="'+b.id+'" onclick="openEmojiPicker(\'wic_'+b.id+'\')" oninput="updateWsBucket(this.dataset.bid,\'icon\',this.value)" readonly/>'
         + '<input class="bkt-nm-in" value="'+b.label+'" data-bid="'+b.id+'" oninput="updateWsBucket(this.dataset.bid,\'label\',this.value)"/>'
         + '<input type="color" class="col-in" value="'+b.color+'" data-bid="'+b.id+'" oninput="updateWsBucket(this.dataset.bid,\'color\',this.value)"/>'
+        + '<button class="bkt-del-btn" data-bid="'+b.id+'" onclick="deleteWsBucket(this.dataset.bid)" title="Delete bucket">&#10005;</button>'
         + '</div>';
     }).join('');
   }
@@ -1911,6 +1915,15 @@ async function detectGeminiModels() {
   }
 }
 function updateBucket(id, key, val) { var b = D.buckets.find(function(bk){return bk.id===id;}); if (b) b[key]=val; saveData(); populateSidebar(); }
+function deleteBucket(id) {
+  if (D.buckets.length <= 1) { alert('You need at least one bucket.'); return; }
+  var b = D.buckets.find(function(bk){return bk.id===id;});
+  var inUse = D.tasks.filter(function(t){return t.bucket===id;}).length;
+  var msg = 'Delete "' + (b?b.label:id) + '" bucket?' + (inUse ? ' ' + inUse + ' task(s) using it will keep this bucket tag but it will no longer appear in the list.' : '');
+  if (!confirm(msg)) return;
+  D.buckets = D.buckets.filter(function(bk){return bk.id!==id;});
+  saveData(); populateSettings(); populateSidebar(); renderBoard();
+}
 function addBucket() { D.buckets.push({id:'bkt'+Date.now(),label:'New Bucket',icon:'&#128230;',color:'#6366F1'}); saveData(); populateSettings(); populateSidebar(); }
 
 //  AUTH
@@ -2441,6 +2454,14 @@ function updateWsBucket(id, key, val) {
   var b = D.wsBuckets.find(function(bk){return bk.id===id;});
   if (b) b[key] = val;
   saveData(); sbSaveWs(); populateSidebar();
+}
+function deleteWsBucket(id) {
+  if (D.wsBuckets.length <= 1) { alert('You need at least one Weekly Sync bucket.'); return; }
+  var b = D.wsBuckets.find(function(bk){return bk.id===id;});
+  if (!confirm('Delete "' + (b?b.label:id) + '" from Weekly Sync? This removes it for both of you — past notes filed under it stay in history but the bucket itself is gone.')) return;
+  D.wsBuckets = D.wsBuckets.filter(function(bk){return bk.id!==id;});
+  saveData(); sbSaveWs(); populateSettings(); populateSidebar();
+  var wsView = el('view-ws'); if (wsView && wsView.classList.contains('active')) renderWsView();
 }
 function addWsBucket() {
   var ic = el('wsNbIc'); var lbl = el('wsNbLbl'); var clr = el('wsNbClr');
