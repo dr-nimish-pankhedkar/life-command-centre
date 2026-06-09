@@ -350,11 +350,11 @@ button{cursor:pointer;}
 .swipe-action-del{background:#EF4444;color:#fff;border:none;height:100%;padding:0 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;border-radius:0 16px 16px 0;}
 .task-swipe-inner{position:relative;z-index:1;transition:transform .2s cubic-bezier(.4,0,.2,1);}
 .task-chk{accent-color:#FF6B35;width:18px;height:18px;cursor:pointer;flex-shrink:0;}
-.task-row-actions{display:none;align-items:center;gap:2px;flex-shrink:0;margin-left:4px;}
+.task-row-actions{display:flex;align-items:center;gap:2px;flex-shrink:0;margin-left:4px;}
 .task-ic-btn{background:transparent;border:none;padding:4px 7px;font-size:13px;color:#C4A882;cursor:pointer;border-radius:6px;transition:all .15s;line-height:1;}
 .task-ic-btn:hover{background:#F0E0D0;color:#8B6B50;}
 .task-ic-del:hover{background:#FEE2E2;color:#EF4444;}
-@media(min-width:641px){.task-row-actions{display:flex;}.task-swipe-actions{display:none!important;}}
+@media(min-width:641px){.task-swipe-actions{display:none!important;}}
 #bktChipsRow::-webkit-scrollbar{display:none;}
 .mob-bkt-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;border:1.5px solid var(--bd);background:var(--sf);font-size:12px;font-weight:600;color:var(--mu);cursor:pointer;white-space:nowrap;flex-shrink:0;transition:all .15s;font-family:inherit;}
 .mob-bkt-chip.active{border-color:currentColor;background:color-mix(in srgb,currentColor 12%,transparent);}
@@ -1098,6 +1098,7 @@ function resetRepeatPicker(prefix, suffix) {
 
 //  TASK CARD 
 function tSwipeRowHTML(t, isDone) {
+  if (editingTaskId === t.id) return tRowHTML(t, isDone);
   var b = D.buckets.find(function(bk) { return bk.id === t.bucket; }) || {icon:'&#8226;', label: t.bucket || '', color:'#C4A882'};
   var m = PRI_META[t.priority] || PRI_META['P2'];
   var ownerBorder = t.owner === CFG.u1 ? CFG.u1Color : t.owner === CFG.u2 ? CFG.u2Color : t.owner === 'guest' ? '#2ED573' : t.owner === 'joint' ? '#A55EEA' : '#F0E0D0';
