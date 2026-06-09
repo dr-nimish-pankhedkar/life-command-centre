@@ -493,6 +493,9 @@ button{cursor:pointer;}
           <option value="monthly">Repeats monthly</option>
         </select>
         <div id="newRepeatDaysWrap" style="margin-top:6px;width:100%;"></div>
+        <div id="newRepeatEndRow" style="display:none;margin-top:6px;">
+          <input type="date" id="newRepeatEnd" style="width:100%;padding:8px 12px;border:1px solid var(--bd);border-radius:8px;font-size:13px;color:var(--tx);background:var(--sf);outline:none;" placeholder="End date (optional)">
+        </div>
         </div>
       </div>
       <div id="guestBanner" style="display:none;background:linear-gradient(135deg,#EEFFEF,#D4FAE8);border:1.5px solid #92F0A0;border-radius:14px;padding:10px 16px;margin-bottom:10px;font-size:11px;color:#1A7A40;font-weight:700;text-align:center;">&#128100; Guest Demo &mdash; sample data only. Nothing is saved.</div><div id="greetingCard" style="margin-bottom:10px;"></div><div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap;"><button id="filterToggle" onclick="toggleFilterDrawer()" style="padding:7px 14px;border-radius:50px;border:1.5px solid #E0D0C0;background:#fff;font-size:11px;font-weight:700;color:#8B6B50;cursor:pointer;font-family:Nunito,sans-serif;outline:none;">&#9776; Sort &amp; Filter</button><div id="activeChips" style="display:flex;gap:5px;flex-wrap:wrap;"></div></div><div id="filterDrawer" style="display:none;padding:10px 14px;background:#fff;border:1.5px solid #F0E0D0;border-radius:14px;margin-bottom:10px;flex-wrap:wrap;gap:6px;"><button class="sf-btn" id="filter-p1b" onclick="toggleFilter('p1')">&#9889; P1</button><button class="sf-btn" id="filter-p2b" onclick="toggleFilter('p2')">&#128204; P2</button><button class="sf-btn" id="sort-priorityb" onclick="setSort('priority')">&#8597; Priority</button><button class="sf-btn" id="sort-dateb" onclick="setSort('date')">&#128197; Date</button><button class="sf-btn" id="sort-bucketb" onclick="setSort('bucket')">&#128230; Bucket</button><button class="sf-btn" id="filter-doneb" onclick="toggleFilter('done')">&#10003; Done</button><button class="sf-btn" onclick="clearFilters()" style="color:#EF4444;">&#10005; Clear</button></div><div id="bktChipsRow" style="display:flex;gap:6px;overflow-x:auto;padding:0 0 6px 0;margin-bottom:8px;scrollbar-width:none;-webkit-overflow-scrolling:touch;"></div><div id="taskLists"></div>
@@ -1047,6 +1050,11 @@ function repeatBadge(t) {
     var dayLbls = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
     lbl = t.repeatDays.map(function(d){return dayLbls[d];}).join('/');
   }
+  if (t.repeatEnd) {
+    var mo = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var ed = new Date(t.repeatEnd+'T00:00:00');
+    lbl += ' until ' + ed.getDate() + ' ' + mo[ed.getMonth()];
+  }
   return '<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:12px;background:#EEF2FF;color:#6366F1;">&#128257; ' + lbl + '</span>';
 }
 
@@ -1072,13 +1080,20 @@ function toggleRepeatDay(prefix, suffix, day, btn) {
   btn.classList.toggle('active', idx === -1);
 }
 function onRepeatChange(prefix, suffix) {
-  var sel = el(prefix + 'Repeat' + suffix); var row = el(prefix + 'RepeatDaysRow' + suffix);
+  var sel = el(prefix + 'Repeat' + suffix);
+  var row = el(prefix + 'RepeatDaysRow' + suffix);
+  var endRow = el(prefix + 'RepeatEndRow' + suffix);
+  var isRepeat = sel && sel.value !== 'none';
   if (row) row.style.display = (sel && sel.value === 'weekly') ? 'flex' : 'none';
+  if (endRow) endRow.style.display = isRepeat ? 'block' : 'none';
 }
 function resetRepeatPicker(prefix, suffix) {
   var row = el(prefix + 'RepeatDaysRow' + suffix); var inp = el(prefix + 'RepeatDays' + suffix);
+  var endRow = el(prefix + 'RepeatEndRow' + suffix); var endInp = el(prefix + 'RepeatEnd' + suffix);
   if (inp) inp.value = '';
+  if (endInp) endInp.value = '';
   if (row) { row.style.display = 'none'; row.querySelectorAll('.rdbtn').forEach(function(b) { b.classList.remove('active'); }); }
+  if (endRow) endRow.style.display = 'none';
 }
 
 //  TASK CARD 
@@ -1263,7 +1278,7 @@ function deleteTask(id) {
 }
 function startEdit(id) { editingTaskId = id; renderBoard(); setTimeout(function() { var i = el('editTxt-' + id); if (i) i.focus(); }, 50); }
 function saveEdit(id) {
-  var i = el('editTxt-' + id); var pri = el('editPri-' + id); var bkt = el('editBkt-' + id); var tgt = el('editTarget-' + id); var rpt = el('editRepeat-' + id); var rptDays = el('editRepeatDays-' + id);
+  var i = el('editTxt-' + id); var pri = el('editPri-' + id); var bkt = el('editBkt-' + id); var tgt = el('editTarget-' + id); var rpt = el('editRepeat-' + id); var rptDays = el('editRepeatDays-' + id); var rptEnd = el('editRepeatEnd-' + id);
   if (!i) return; var txt = i.value.trim(); if (!txt) return;
   var task = D.tasks.find(function(t) { return t.id === id; }); if (!task) return;
   task.text = txt;
@@ -1272,6 +1287,7 @@ function saveEdit(id) {
   if (tgt) task.target = tgt.value || null;
   if (rpt) task.repeat = rpt.value !== 'none' ? rpt.value : null;
   task.repeatDays = (rpt && rpt.value === 'weekly' && rptDays && rptDays.value) ? rptDays.value.split(',').map(Number) : null;
+  task.repeatEnd = (task.repeat && rptEnd && rptEnd.value) ? rptEnd.value : null;
   editingTaskId = null; saveData(); renderBoard();
 }
 function cancelEdit() { editingTaskId = null; renderBoard(); }
@@ -1290,6 +1306,7 @@ function tRowHTML(t, isDone) {
       + ['none','daily','weekly','monthly'].map(function(r){return '<option value="'+r+'"'+((t.repeat||'none')===r?' selected':'')+'>'+(r==='none'?'No repeat':r.charAt(0).toUpperCase()+r.slice(1))+'</option>';}).join('')
       + '</select>'
       + repeatDayPickerHTML('edit', '-'+t.id, t.repeatDays||[], (t.repeat!=='weekly'))
+      + (t.repeat && t.repeat !== 'none' ? '<div id="editRepeatEndRow-'+t.id+'" style="display:block;"><input type="date" id="editRepeatEnd-'+t.id+'" value="'+(t.repeatEnd||'')+'" style="border:1px solid #F0E0D0;border-radius:8px;padding:6px 8px;font-size:12px;color:#1A0F06;" title="End date (optional)"/></div>' : '<div id="editRepeatEndRow-'+t.id+'" style="display:none;"><input type="date" id="editRepeatEnd-'+t.id+'" value="" style="border:1px solid #F0E0D0;border-radius:8px;padding:6px 8px;font-size:12px;color:#1A0F06;" title="End date (optional)"/></div>')
       + '<button data-tid="' + t.id + '" onclick="saveEdit(parseInt(this.dataset.tid))" style="background:#FF6B35;color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;">Save</button>'
       + '<button onclick="cancelEdit()" style="border:1px solid #F0E0D0;border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;">Cancel</button>'
       + '</div>';
@@ -1330,11 +1347,12 @@ function closeAllSwipes() { document.querySelectorAll('.task-swipe-inner').forEa
 function openAdd() { var af = el('addForm'); if (af) af.style.display = 'block'; initBktSelects(); var rw = el('newRepeatDaysWrap'); if (rw) rw.innerHTML = repeatDayPickerHTML('new','',[],true); setTimeout(function() { var i = el('newTxt'); if (i) i.focus(); }, 100); }
 function closeAdd() { var af = el('addForm'); if (af) af.style.display = 'none'; }
 function submitAdd() {
-  var txt = el('newTxt'); var bkt = el('newBkt'); var pri = el('newPri'); var tgt = el('newTarget'); var rpt = el('newRepeat'); var rptDays = el('newRepeatDays');
+  var txt = el('newTxt'); var bkt = el('newBkt'); var pri = el('newPri'); var tgt = el('newTarget'); var rpt = el('newRepeat'); var rptDays = el('newRepeatDays'); var rptEnd = el('newRepeatEnd');
   if (!txt || !txt.value.trim()) return;
   if (currentUser === 'guest') { closeAdd(); return; }
   var isWeekly = rpt && rpt.value === 'weekly';
-  D.tasks.push({id:Date.now(), text:txt.value.trim(), bucket:bkt?bkt.value:D.buckets[0].id, priority:pri?pri.value:'P2', done:false, created:Date.now(), owner:currentUser, target:tgt&&tgt.value?tgt.value:null, repeat:rpt&&rpt.value!=='none'?rpt.value:null, repeatDays:(isWeekly&&rptDays&&rptDays.value)?rptDays.value.split(',').map(Number):null, fromSync:false});
+  var repeat = rpt && rpt.value !== 'none' ? rpt.value : null;
+  D.tasks.push({id:Date.now(), text:txt.value.trim(), bucket:bkt?bkt.value:D.buckets[0].id, priority:pri?pri.value:'P2', done:false, created:Date.now(), owner:currentUser, target:tgt&&tgt.value?tgt.value:null, repeat:repeat, repeatDays:(isWeekly&&rptDays&&rptDays.value)?rptDays.value.split(',').map(Number):null, repeatEnd:(repeat&&rptEnd&&rptEnd.value)?rptEnd.value:null, fromSync:false});
   txt.value = ''; if (rpt) rpt.value = 'none'; resetRepeatPicker('new',''); vibrate([20,10,20]); closeAdd(); saveData(); renderBoard(); renderSidebarStats(); populateSidebar();
 }
 
@@ -1356,14 +1374,16 @@ function closeQuickAdd() {
   var i = el('qaInput'); if (i) i.value = '';
   var qt = el('qaTarget'); if (qt) qt.value = '';
   var qr = el('qaRepeat'); if (qr) qr.value = 'none';
+  var qre = el('qaRepeatEnd'); if (qre) qre.value = '';
   resetRepeatPicker('qa','');
 }
 function submitQuickAdd() {
-  var txt = el('qaInput'); var bkt = el('qaBkt'); var pri = el('qaPri'); var tgt = el('qaTarget'); var rpt = el('qaRepeat'); var rptDays = el('qaRepeatDays');
+  var txt = el('qaInput'); var bkt = el('qaBkt'); var pri = el('qaPri'); var tgt = el('qaTarget'); var rpt = el('qaRepeat'); var rptDays = el('qaRepeatDays'); var rptEnd = el('qaRepeatEnd');
   if (!txt || !txt.value.trim()) { closeQuickAdd(); return; }
   if (currentUser === 'guest') { closeQuickAdd(); return; }
   var isWeekly = rpt && rpt.value === 'weekly';
-  D.tasks.push({id:Date.now(), text:txt.value.trim(), bucket:bkt?bkt.value:(D.buckets[0]||{id:'cafe'}).id, priority:pri?pri.value:'P2', done:false, created:Date.now(), owner:currentUser, target:tgt&&tgt.value?tgt.value:null, repeat:rpt&&rpt.value!=='none'?rpt.value:null, repeatDays:(isWeekly&&rptDays&&rptDays.value)?rptDays.value.split(',').map(Number):null, fromSync:false});
+  var repeat = rpt && rpt.value !== 'none' ? rpt.value : null;
+  D.tasks.push({id:Date.now(), text:txt.value.trim(), bucket:bkt?bkt.value:(D.buckets[0]||{id:'cafe'}).id, priority:pri?pri.value:'P2', done:false, created:Date.now(), owner:currentUser, target:tgt&&tgt.value?tgt.value:null, repeat:repeat, repeatDays:(isWeekly&&rptDays&&rptDays.value)?rptDays.value.split(',').map(Number):null, repeatEnd:(repeat&&rptEnd&&rptEnd.value)?rptEnd.value:null, fromSync:false});
   vibrate([20,10,20]); closeQuickAdd(); saveData(); renderBoard(); renderSidebarStats(); populateSidebar();
 }
 
@@ -1766,6 +1786,7 @@ function wsColHTML(bucketId, who, items, isClosed) {
       + '<option value="none">No repeat</option><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option>'
       + '</select></div>'
       + repeatDayPickerHTML('wsTask', wsTaskSuffix, [], true)
+      + '<div id="wsTaskRepeatEndRow' + wsTaskSuffix + '" style="display:none;"><input type="date" id="wsTaskRepeatEnd' + wsTaskSuffix + '" style="width:100%;border:1px solid var(--bd);border-radius:8px;padding:6px 8px;font-size:12px;color:var(--tx);background:var(--sf);outline:none;" placeholder="End date (optional)"/></div>'
       + (CFG.solo ? '' : '<label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--mu);font-weight:700;cursor:pointer;">'
       + '<input type="checkbox" id="wsTaskBoth-' + bucketId + '-' + who + '" style="accent-color:#A55EEA;width:14px;height:14px;cursor:pointer;"/> Add for both of us</label>')
       + '<label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--mu);font-weight:700;cursor:pointer;">'
@@ -1810,8 +1831,10 @@ async function wsAddTask(bkt, who) {
   var repeat = rptEl && rptEl.value !== 'none' ? rptEl.value : null;
   var rptDaysEl = el('wsTaskRepeatDays'+wsTaskSuffix);
   var repeatDays = (repeat === 'weekly' && rptDaysEl && rptDaysEl.value) ? rptDaysEl.value.split(',').map(Number) : null;
+  var rptEndEl = el('wsTaskRepeatEnd'+wsTaskSuffix);
+  var repeatEnd = (repeat && rptEndEl && rptEndEl.value) ? rptEndEl.value : null;
   inp.value = ''; if (alsoNoteEl) alsoNoteEl.checked = false; if (bothEl) bothEl.checked = false;
-  if (dateEl) dateEl.value = ''; if (rptEl) rptEl.value = 'none'; resetRepeatPicker('wsTask', wsTaskSuffix);
+  if (dateEl) dateEl.value = ''; if (rptEl) rptEl.value = 'none'; if (rptEndEl) rptEndEl.value = ''; resetRepeatPicker('wsTask', wsTaskSuffix);
   wsHideTaskForm(bkt, who);
   // Use Gemini to pick best bucket from D.buckets
   var mappedBucket = bkt; // default: use ws bucket id as fallback
@@ -1828,7 +1851,7 @@ async function wsAddTask(bkt, who) {
     }
   } catch(ex) {}
   var taskOwner = both ? 'joint' : who;
-  D.tasks.push({id:Date.now(),text:txt,bucket:mappedBucket,priority:'P2',done:false,created:Date.now(),owner:taskOwner,target:target,repeat:repeat,repeatDays:repeatDays,fromSync:true});
+  D.tasks.push({id:Date.now(),text:txt,bucket:mappedBucket,priority:'P2',done:false,created:Date.now(),owner:taskOwner,target:target,repeat:repeat,repeatDays:repeatDays,repeatEnd:repeatEnd,fromSync:true});
   saveData(); renderBoard(); renderSidebarStats(); populateSidebar();
   // Also persist in wsData so the entry stays visible in the weekly sync column(s)
   var week = wsData.weeks[wsCurrentWeek];
@@ -1837,7 +1860,7 @@ async function wsAddTask(bkt, who) {
     var whos = both ? [CFG.u1, CFG.u2] : [who];
     whos.forEach(function(w) {
       if (!week.items[bkt][w]) week.items[bkt][w] = [];
-      week.items[bkt][w].push({text:txt, carried:false, isTask:true, repeat:repeat, repeatDays:repeatDays});
+      week.items[bkt][w].push({text:txt, carried:false, isTask:true, repeat:repeat, repeatDays:repeatDays, repeatEnd:repeatEnd});
       if (alsoNote) week.items[bkt][w].push({text:txt, carried:false});
     });
     saveWs();
@@ -1939,22 +1962,31 @@ function fmtDateKey(d) {
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
 function calVisibleTasks() {
-  return D.tasks.filter(function(t){ return t.target && (!t.owner || t.owner===currentUser || t.owner==='joint'); });
+  return D.tasks.filter(function(t){
+    var hasSchedule = t.target || (t.repeat && t.repeat !== 'none');
+    return hasSchedule && (!t.owner || t.owner===currentUser || t.owner==='joint');
+  });
 }
 function calOwnerColor(t) {
   return t.owner === CFG.u1 ? CFG.u1Color : t.owner === CFG.u2 ? CFG.u2Color : t.owner === 'joint' ? '#A55EEA' : '#94A3B8';
 }
 function calTaskOccursOn(t, ds) {
-  if (!t.target) return false;
-  if (ds < t.target) return false;
-  if (!t.repeat || t.repeat === 'none') return ds === t.target;
-  var td = new Date(t.target+'T00:00:00'); var dd = new Date(ds+'T00:00:00');
+  if (!t.repeat || t.repeat === 'none') return !!t.target && ds === t.target;
+  var startDate = t.target || (t.created ? new Date(t.created).toISOString().split('T')[0] : null);
+  if (startDate && ds < startDate) return false;
+  if (t.repeatEnd && ds > t.repeatEnd) return false;
+  var dd = new Date(ds+'T00:00:00');
   if (t.repeat === 'daily') return true;
   if (t.repeat === 'weekly') {
     if (Array.isArray(t.repeatDays) && t.repeatDays.length) return t.repeatDays.indexOf(dd.getDay()) !== -1;
-    return td.getDay() === dd.getDay();
+    if (t.target) { var td = new Date(t.target+'T00:00:00'); return td.getDay() === dd.getDay(); }
+    return true;
   }
-  if (t.repeat === 'monthly') return td.getDate() === dd.getDate();
+  if (t.repeat === 'monthly') {
+    var anchorDay = t.target ? new Date(t.target+'T00:00:00').getDate()
+                             : (startDate ? new Date(startDate+'T00:00:00').getDate() : null);
+    return anchorDay ? dd.getDate() === anchorDay : true;
+  }
   return false;
 }
 function setCalMode(mode) { calMode = mode; document.querySelectorAll('.cal-mode-btn').forEach(function(b){b.classList.toggle('active', b.dataset.m===mode);}); renderCalendar(); }
@@ -2954,7 +2986,11 @@ async function wsGenAgenda() {
       <option value="none">Never</option><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option>
     </select></div>
   </div>
-  <div id="qaRepeatDaysWrap" style="margin-bottom:14px;"></div>
+  <div id="qaRepeatDaysWrap" style="margin-bottom:6px;"></div>
+  <div id="qaRepeatEndRow" style="display:none;margin-bottom:14px;">
+    <label style="font-size:11px;font-weight:700;color:#8B6B50;display:block;margin-bottom:4px;">END DATE (optional)</label>
+    <input type="date" id="qaRepeatEnd" style="width:100%;padding:10px 12px;border:1.5px solid #F0E0D0;border-radius:12px;font-size:13px;font-family:Nunito,sans-serif;background:#fff;color:#1A0F06;outline:none;">
+  </div>
   <button onclick="submitQuickAdd()" style="width:100%;padding:14px;background:linear-gradient(135deg,#FF6B35,#FF8C42);color:#fff;border:none;border-radius:14px;font-size:15px;font-weight:800;cursor:pointer;font-family:Nunito,sans-serif;">Add Task</button>
 </div>
 <button id="chatFab" onclick="toggleChatPanel()" style="position:fixed;bottom:80px;right:16px;z-index:300;width:52px;height:52px;border-radius:50%;border:none;background:linear-gradient(135deg,#FF6B35,#FF8C42);box-shadow:0 4px 20px rgba(255,107,53,.4);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:opacity .3s;" title="AI Assistant">
