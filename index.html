@@ -1489,17 +1489,27 @@ async function scheduleEveningReminder(reg) {
     if (p !== 'granted') return;
   }
   if (Notification.permission !== 'granted') return;
-  var today = new Date().toDateString();
-  if (localStorage.getItem('lcc-notif-sched') === today) return;
-  localStorage.setItem('lcc-notif-sched', today);
   var timeStr = (D.settings && D.settings.eveningTime) || '20:00';
   var parts = timeStr.split(':');
   var target = new Date();
   target.setHours(parseInt(parts[0]), parseInt(parts[1]), 0, 0);
   var msUntil = target - Date.now();
-  if (msUntil <= 0) return;
   var sw = reg.active || reg.installing || reg.waiting;
   if (!sw) return;
+  if (msUntil <= 0) {
+    // Notification time already passed today — fire now if not already shown
+    var today = new Date().toDateString();
+    if (localStorage.getItem('lcc-notif-fired') !== today) {
+      localStorage.setItem('lcc-notif-fired', today);
+      sw.postMessage({ type: 'FIRE_NOW', tag: 'lcc-evening',
+        title: '🌙 Evening Ritual — ' + new Date().toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'}),
+        body: 'Time to reflect on today. How did it go?', url: '/?nav=ritual' });
+    }
+    return;
+  }
+  // Remove once-per-day guard — SW deduplicates by target timestamp, so re-scheduling
+  // on every app open is safe and ensures the timer survives SW restarts
+  localStorage.removeItem('lcc-notif-fired');
   sw.postMessage({
     type: 'SCHEDULE_EVENING',
     msUntil: msUntil,
@@ -2370,6 +2380,15 @@ function bootApp() {
       scheduleEveningReminder(reg);
       scheduleHabitReminder(reg);
     }).catch(function(){});
+    // Re-schedule on every app refocus so the timer survives service-worker restarts
+    document.addEventListener('visibilitychange', function() {
+      if (document.visibilityState === 'visible') {
+        navigator.serviceWorker.ready.then(function(reg) {
+          scheduleEveningReminder(reg);
+          scheduleHabitReminder(reg);
+        });
+      }
+    });
   }
 }
 function showApp() {
@@ -2600,10 +2619,11 @@ function renderHabits() {
     if (ntime) ntime.value = (D.settings.habitNotifTime || '21:00');
     if (ns) {
       var enabled = D.settings.habitNotif === true;
-      var permOk = (typeof Notification !== 'undefined') && Notification.permission === 'granted';
+      var perm = (typeof Notification !== 'undefined') ? Notification.permission : 'denied';
       if (!enabled) { ns.textContent = 'Reminders off'; ns.style.color='var(--mu)'; }
-      else if (!permOk) { ns.textContent = '⚠️ Allow notifications in browser to activate'; ns.style.color='#F59E0B'; }
-      else { ns.textContent = '✓ Reminder set for '+(D.settings.habitNotifTime||'21:00'); ns.style.color='#10B981'; }
+      else if (perm === 'denied') { ns.textContent = '🚫 Notifications blocked — go to browser/phone Settings → Site Settings → Notifications and allow this site'; ns.style.color='#EF4444'; }
+      else if (perm !== 'granted') { ns.textContent = '⚠️ Tap the toggle to grant notification permission'; ns.style.color='#F59E0B'; }
+      else { ns.textContent = '✓ Reminder set for '+(D.settings.habitNotifTime||'21:00')+' — open app before this time each day'; ns.style.color='#10B981'; }
     }
     var list = el('habList'); if (!list) return;
     if (!myHabits.length) { list.innerHTML = ''; return; }
@@ -2693,6 +2713,7 @@ function toggleHabitNotif(checked) {
   saveData();
   if (checked) {
     localStorage.removeItem('lcc-habit-notif-sched');
+    localStorage.removeItem('lcc-habit-notif-fired');
     navigator.serviceWorker.ready.then(function(reg){ scheduleHabitReminder(reg); });
   }
   renderHabits();
@@ -2713,16 +2734,26 @@ async function scheduleHabitReminder(reg) {
     if (p !== 'granted') return;
   }
   if (Notification.permission !== 'granted') return;
-  var today = new Date().toDateString();
-  if (localStorage.getItem('lcc-habit-notif-sched') === today) return;
-  localStorage.setItem('lcc-habit-notif-sched', today);
   var timeStr = D.settings.habitNotifTime || '21:00';
   var parts = timeStr.split(':');
   var target = new Date(); target.setHours(parseInt(parts[0]), parseInt(parts[1]), 0, 0);
   var msUntil = target - Date.now();
-  if (msUntil <= 0) return;
   var sw = reg.active || reg.installing || reg.waiting;
   if (!sw) return;
+  if (msUntil <= 0) {
+    // Notification time already passed today — fire now if not already shown
+    var today = new Date().toDateString();
+    if (localStorage.getItem('lcc-habit-notif-fired') !== today) {
+      localStorage.setItem('lcc-habit-notif-fired', today);
+      sw.postMessage({ type: 'FIRE_NOW', tag: 'lcc-habit',
+        title: '🔥 Habit Check-in', body: 'Take 30 seconds to mark today\'s habits!',
+        url: '/?nav=habits' });
+    }
+    return;
+  }
+  // Remove once-per-day guard — SW deduplicates by target timestamp, so re-scheduling
+  // on every app open is safe and ensures the timer survives SW restarts
+  localStorage.removeItem('lcc-habit-notif-fired');
   sw.postMessage({ type: 'SCHEDULE_HABIT', msUntil: msUntil,
     title: '🔥 Habit Check-in', body: 'Take 30 seconds to mark today\'s habits!' });
 }

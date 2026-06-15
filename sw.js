@@ -1,4 +1,4 @@
-const CACHE = 'lcc-v7';
+const CACHE = 'lcc-v8';
 const OFFLINE_URL = '/offline.html';
 const STATIC_ASSETS = [
   '/',
@@ -65,30 +65,43 @@ self.addEventListener('fetch', e => {
   );
 });
 
-// Scheduled notification messages from the app
+// Per-tag scheduled target timestamps — used to deduplicate re-schedule messages
+// from the same SW lifetime without creating extra setTimeout calls.
+const _scheduled = {};
+
+function showNotif(tag, title, body, url) {
+  return self.registration.showNotification(title, {
+    body, icon: '/icon-192.png', badge: '/icon-192.png',
+    tag, renotify: true, data: { url }
+  });
+}
+
 self.addEventListener('message', e => {
   if (!e.data) return;
-  if (e.data.type === 'SCHEDULE_EVENING') {
-    const { msUntil, title, body } = e.data;
-    setTimeout(() => {
-      self.registration.showNotification(title, {
-        body, icon: '/icon-192.png', badge: '/icon-192.png',
-        tag: 'lcc-evening', renotify: false, data: { url: '/?nav=ritual' }
-      });
-    }, msUntil);
+
+  // Immediate notification (used for "missed" case when scheduled time already passed)
+  if (e.data.type === 'FIRE_NOW') {
+    showNotif(e.data.tag, e.data.title, e.data.body, e.data.url);
+    return;
   }
-  if (e.data.type === 'SCHEDULE_HABIT') {
+
+  if (e.data.type === 'SCHEDULE_EVENING' || e.data.type === 'SCHEDULE_HABIT') {
     const { msUntil, title, body } = e.data;
+    const tag = e.data.type === 'SCHEDULE_HABIT' ? 'lcc-habit' : 'lcc-evening';
+    const url = e.data.type === 'SCHEDULE_HABIT' ? '/?nav=habits' : '/?nav=ritual';
+    const targetTs = Date.now() + msUntil;
+
+    // Deduplicate: if already scheduled within 90 seconds of same target, skip
+    if (_scheduled[tag] && Math.abs(_scheduled[tag] - targetTs) < 90000) return;
+    _scheduled[tag] = targetTs;
+
     setTimeout(() => {
-      self.registration.showNotification(title, {
-        body, icon: '/icon-192.png', badge: '/icon-192.png',
-        tag: 'lcc-habit', renotify: false, data: { url: '/?nav=habits' }
-      });
+      delete _scheduled[tag];
+      showNotif(tag, title, body, url);
     }, msUntil);
   }
 });
 
-// Tap on notification opens the app at the ritual view
 self.addEventListener('notificationclick', e => {
   e.notification.close();
   const target = (e.notification.data && e.notification.data.url) || '/?nav=ritual';
