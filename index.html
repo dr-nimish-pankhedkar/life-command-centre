@@ -1277,7 +1277,19 @@ function deleteTask(id) {
   D.tasks = D.tasks.filter(function(t) { return t.id !== id; });
   saveData(); renderBoard(); renderSidebarStats(); populateSidebar();
 }
-function startEdit(id) { editingTaskId = id; renderBoard(); setTimeout(function() { var i = el('editTxt-' + id); if (i) i.focus(); }, 50); }
+function renderActiveTaskView() {
+  var views = ['board','cal','ritual','ws','insights','habits','goals','settings'];
+  for (var vi = 0; vi < views.length; vi++) {
+    var ve = el('view-' + views[vi]);
+    if (ve && ve.classList.contains('active')) {
+      if (views[vi] === 'board') renderBoard();
+      else if (views[vi] === 'cal') renderCalendar();
+      return;
+    }
+  }
+  renderBoard();
+}
+function startEdit(id) { editingTaskId = id; renderActiveTaskView(); setTimeout(function() { var i = el('editTxt-' + id); if (i) i.focus(); }, 50); }
 function saveEdit(id) {
   var i = el('editTxt-' + id); var pri = el('editPri-' + id); var bkt = el('editBkt-' + id); var tgt = el('editTarget-' + id); var rpt = el('editRepeat-' + id); var rptDays = el('editRepeatDays-' + id); var rptEnd = el('editRepeatEnd-' + id);
   if (!i) return; var txt = i.value.trim(); if (!txt) return;
@@ -1289,9 +1301,9 @@ function saveEdit(id) {
   if (rpt) task.repeat = rpt.value !== 'none' ? rpt.value : null;
   task.repeatDays = (rpt && rpt.value === 'weekly' && rptDays && rptDays.value) ? rptDays.value.split(',').map(Number) : null;
   task.repeatEnd = (task.repeat && rptEnd && rptEnd.value) ? rptEnd.value : null;
-  editingTaskId = null; saveData(); renderBoard();
+  editingTaskId = null; saveData(); renderActiveTaskView();
 }
-function cancelEdit() { editingTaskId = null; renderBoard(); }
+function cancelEdit() { editingTaskId = null; renderActiveTaskView(); }
 function tRowHTML(t, isDone) {
   var b = D.buckets.find(function(bk) { return bk.id === t.bucket; }) || {icon:'&#8226;', label:t.bucket, color:'#C4A882'};
   var m = PRI_META[t.priority] || PRI_META['P2'];
