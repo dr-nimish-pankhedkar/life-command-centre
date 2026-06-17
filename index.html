@@ -1580,6 +1580,7 @@ function nav(v) {
   document.querySelectorAll('.nav-btn,.mob-btn').forEach(function(b) { b.classList.remove('active'); });
   var vEl = el('view-' + v); if (vEl) vEl.classList.add('active');
   document.querySelectorAll('[data-nav="' + v + '"]').forEach(function(b) { b.classList.add('active'); });
+  history.replaceState(null, '', '?nav=' + v);
   if (v === 'board') renderBoard();
   else if (v === 'ritual') { renderEveningDone(); renderMornBktChips(); }
   else if (v === 'ws') renderWsView();
@@ -2370,7 +2371,7 @@ function bootApp() {
   var gb = el('guestBanner'); if (gb) gb.style.display = 'none';
   showApp();
   var navParam = new URLSearchParams(location.search).get('nav');
-  if (navParam && ['board','ritual','ws','insights','habits','settings'].includes(navParam)) nav(navParam);
+  if (navParam && ['board','ritual','ws','cal','insights','habits','goals','settings'].includes(navParam)) nav(navParam);
   renderBoard(); renderSidebarStats(); renderInsights();
   addPanelMsg('assistant', 'Good to see you, ' + (currentUser===CFG.u2?CFG.u2Name:CFG.u1Name) + '! How can I help today?');
   sbLoad(); applyEmotionMode(); setTimeout(checkWeeklyWins, 2000);
