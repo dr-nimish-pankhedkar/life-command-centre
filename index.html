@@ -1250,9 +1250,11 @@ function filterTasks(tasks) {
 }
 function filterBkt(bktId) {
   activeBucket = bktId;
+  var boardView = el('view-board');
+  if (boardView && !boardView.classList.contains('active')) nav('board');
+  else renderBoard();
   document.querySelectorAll('.bkt-nav').forEach(function(b) { b.classList.remove('active'); });
   var btn = document.querySelector('[data-bkt="' + bktId + '"]'); if (btn) btn.classList.add('active');
-  renderBoard();
 }
 function renderMobBktChips() {
   var row = el('bktChipsRow'); if (!row || !D) return;
@@ -1372,8 +1374,7 @@ function submitAdd() {
 //  QUICK ADD 
 function openQuickAdd() {
   var drawer = el('qaDrawer'); var overlay = el('qaOverlay');
-  var bktSel = el('qaBkt');
-  if (bktSel && D) bktSel.innerHTML = D.buckets.map(function(b) { return '<option value="' + b.id + '">' + b.icon + ' ' + b.label + '</option>'; }).join('');
+  initBktSelects();
   var rw = el('qaRepeatDaysWrap'); if (rw) rw.innerHTML = repeatDayPickerHTML('qa','',[],true);
   if (drawer) drawer.style.transform = 'translateY(0)';
   if (overlay) overlay.style.display = 'block';
@@ -1650,7 +1651,10 @@ function renderLayoutGrid() {
 function initBktSelects() {
   ['newBkt','qaBkt'].forEach(function(sid) {
     var se = el(sid);
-    if (se && D) se.innerHTML = D.buckets.map(function(b) { return '<option value="' + b.id + '">' + b.icon + ' ' + b.label + '</option>'; }).join('');
+    if (se && D) {
+      se.innerHTML = D.buckets.map(function(b) { return '<option value="' + b.id + '">' + b.icon + ' ' + b.label + '</option>'; }).join('');
+      if (activeBucket !== 'all' && D.buckets.some(function(b){return b.id===activeBucket;})) se.value = activeBucket;
+    }
   });
 }
 
