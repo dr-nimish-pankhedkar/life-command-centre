@@ -371,6 +371,21 @@ button{cursor:pointer;}
 .emoji-btn{background:none;border:none;font-size:20px;padding:5px 3px;border-radius:8px;cursor:pointer;line-height:1;text-align:center;transition:background .1s;}
 .emoji-btn:hover{background:var(--sf2);}
 .bkt-ic-in{cursor:pointer!important;}
+#voiceFab{position:fixed;bottom:80px;right:136px;z-index:300;width:52px;height:52px;border-radius:50%;border:none;background:linear-gradient(135deg,#7C3AED,#A855F7);box-shadow:0 4px 20px rgba(124,58,237,.4);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:opacity .3s,background .2s,box-shadow .2s;}
+#voiceFab.recording{background:linear-gradient(135deg,#EF4444,#DC2626);box-shadow:0 4px 24px rgba(239,68,68,.55);animation:micpulse 1.1s ease-in-out infinite;}
+@keyframes micpulse{0%,100%{transform:scale(1);}50%{transform:scale(1.08);}}
+#voiceModal{position:fixed;inset:0;z-index:500;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.45);backdrop-filter:blur(4px);animation:fadeIn .2s;}
+#voiceModalCard{background:var(--sf);border-radius:24px 24px 0 0;padding:20px 20px 32px;width:100%;max-width:540px;box-shadow:0 -8px 40px rgba(0,0,0,.15);animation:slideUp .3s cubic-bezier(.34,1.56,.64,1);}
+@keyframes slideUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
+#voiceListening{position:fixed;inset:0;z-index:490;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(26,15,6,.85);backdrop-filter:blur(6px);}
+.mic-wave{display:flex;align-items:center;gap:5px;margin:20px 0;}
+.mic-wave span{display:inline-block;width:5px;border-radius:3px;background:#A855F7;animation:wave 1.2s ease-in-out infinite;}
+.mic-wave span:nth-child(1){height:12px;animation-delay:0s;}
+.mic-wave span:nth-child(2){height:28px;animation-delay:.15s;}
+.mic-wave span:nth-child(3){height:44px;animation-delay:.3s;}
+.mic-wave span:nth-child(4){height:28px;animation-delay:.45s;}
+.mic-wave span:nth-child(5){height:12px;animation-delay:.6s;}
+@keyframes wave{0%,100%{transform:scaleY(1);}50%{transform:scaleY(1.8);}}
 </style>
 </head>
 <body>
@@ -1560,10 +1575,10 @@ function initOffline() {
 function initFabScroll() {
   document.querySelectorAll('.view').forEach(function(view) {
     view.addEventListener('scroll', function() {
-      var fab = el('chatFab'); var fabadd = el('fabAdd');
+      var fab = el('chatFab'); var fabadd = el('fabAdd'); var fabmic = el('voiceFab');
       var st = view.scrollTop;
-      if (st > lastScrollY + 8) { if (fab) fab.style.opacity = '0'; if (fabadd) fabadd.style.opacity = '0'; }
-      else if (st < lastScrollY - 8) { if (fab) fab.style.opacity = '1'; if (fabadd) fabadd.style.opacity = '1'; }
+      if (st > lastScrollY + 8) { if (fab) fab.style.opacity = '0'; if (fabadd) fabadd.style.opacity = '0'; if (fabmic) fabmic.style.opacity = '0'; }
+      else if (st < lastScrollY - 8) { if (fab) fab.style.opacity = '1'; if (fabadd) fabadd.style.opacity = '1'; if (fabmic) fabmic.style.opacity = '1'; }
       lastScrollY = st;
     });
   });
@@ -2873,6 +2888,130 @@ function saveSession(user) { localStorage.setItem(SESSION_KEY, JSON.stringify({u
 function checkSession() { try { var s=JSON.parse(localStorage.getItem(SESSION_KEY)||'null'); if(s&&s.expiry>Date.now())return s.user; } catch(e) {} return null; }
 
 //  AI 
+// ── VOICE TASK CAPTURE ──────────────────────────────────────────────────────
+var _voiceRecog = null;
+var _voiceTranscript = '';
+
+function startVoiceCapture() {
+  var SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRec) {
+    alert('Voice input is not supported in this browser. Please use Chrome or Edge.');
+    return;
+  }
+  if (_voiceRecog) { stopVoiceCapture(); return; }
+
+  var fab = el('voiceFab'); if (fab) fab.classList.add('recording');
+  el('voiceLiveText').textContent = '';
+  _voiceTranscript = '';
+  el('voiceListening').style.display = 'flex';
+
+  _voiceRecog = new SpeechRec();
+  _voiceRecog.continuous = true;
+  _voiceRecog.interimResults = true;
+  _voiceRecog.lang = 'en-IN';
+
+  _voiceRecog.onresult = function(e) {
+    var interim = '', final = '';
+    for (var i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) final += e.results[i][0].transcript;
+      else interim += e.results[i][0].transcript;
+    }
+    if (final) _voiceTranscript += final;
+    el('voiceLiveText').textContent = (_voiceTranscript + interim).trim();
+  };
+
+  _voiceRecog.onerror = function(e) {
+    stopVoiceCapture();
+    if (e.error !== 'no-speech') alert('Mic error: ' + e.error);
+  };
+
+  _voiceRecog.onend = function() {
+    if (_voiceRecog) { _voiceRecog.start(); } // keep alive until user stops
+  };
+
+  _voiceRecog.start();
+}
+
+function stopVoiceCapture() {
+  if (_voiceRecog) {
+    _voiceRecog.onend = null;
+    _voiceRecog.stop();
+    _voiceRecog = null;
+  }
+  var fab = el('voiceFab'); if (fab) fab.classList.remove('recording');
+  el('voiceListening').style.display = 'none';
+  var transcript = (el('voiceLiveText') && el('voiceLiveText').textContent) || _voiceTranscript;
+  if (transcript && transcript.trim()) showVoiceModal(transcript.trim());
+}
+
+function showVoiceModal(transcript) {
+  // Pre-fill form
+  el('voiceTranscript').textContent = '"' + transcript + '"';
+  el('vcTaskText').value = transcript;
+  el('vcTarget').value = '';
+  el('vcPriority').value = 'P2';
+  el('vcOwner').value = currentUser === CFG.u1 ? '' : '';
+  // Populate bucket dropdown
+  var bSel = el('vcBucket');
+  if (bSel && D) {
+    bSel.innerHTML = D.buckets.map(function(b){ return '<option value="'+b.id+'">'+b.icon+' '+b.label+'</option>'; }).join('');
+    if (activeBucket !== 'all' && D.buckets.some(function(b){return b.id===activeBucket;})) bSel.value = activeBucket;
+  }
+  el('vcParseStatus').textContent = '';
+  el('voiceModal').style.display = 'flex';
+
+  // Kick off AI parse in background
+  parseVoiceTask(transcript);
+}
+
+async function parseVoiceTask(transcript) {
+  var st = el('vcParseStatus');
+  if (st) { st.textContent = '✨ Parsing with AI...'; st.style.color = 'var(--ac)'; }
+  var bktList = D.buckets.map(function(b){ return b.id+'='+b.label; }).join(', ');
+  var today = new Date().toISOString().split('T')[0];
+  var prompt =
+    'Parse this spoken task note into structured fields.\n'+
+    'Spoken text: "'+transcript+'"\n'+
+    'Today is '+today+'. Bucket options: '+bktList+'.\n'+
+    'Reply with ONLY valid JSON (no markdown, no explanation):\n'+
+    '{"text":"<clean task title>","bucket":"<bucket_id or empty string>","priority":"P1|P2|P3","target":"<YYYY-MM-DD or empty string>"}\n'+
+    'Rules: text should be clean and actionable. priority P1=urgent/critical, P2=normal/important, P3=someday. target only if a date/time was mentioned.';
+  try {
+    var raw = await callAI(prompt);
+    var json = raw.trim().replace(/^```json?\n?/,'').replace(/\n?```$/,'').trim();
+    var parsed = JSON.parse(json);
+    if (parsed.text) el('vcTaskText').value = parsed.text;
+    if (parsed.bucket && el('vcBucket')) el('vcBucket').value = parsed.bucket;
+    if (parsed.priority) el('vcPriority').value = parsed.priority;
+    if (parsed.target) el('vcTarget').value = parsed.target;
+    if (st) { st.textContent = '✓ Fields filled by AI — review and confirm'; st.style.color = '#10B981'; }
+  } catch(e) {
+    if (st) { st.textContent = 'AI parse failed — please fill manually'; st.style.color = 'var(--mu)'; }
+  }
+}
+
+function confirmVoiceTask() {
+  var txt = (el('vcTaskText') && el('vcTaskText').value.trim()) || '';
+  if (!txt) { el('vcTaskText').focus(); return; }
+  var bkt = (el('vcBucket') && el('vcBucket').value) || (D.buckets[0] && D.buckets[0].id) || '';
+  var pri = (el('vcPriority') && el('vcPriority').value) || 'P2';
+  var tgt = (el('vcTarget') && el('vcTarget').value) || null;
+  var owner = (el('vcOwner') && el('vcOwner').value) || currentUser;
+  var task = {id:Date.now(), text:txt, bucket:bkt, priority:pri, done:false, created:Date.now(), owner:owner, target:tgt||null, repeat:'none', repeatDays:[]};
+  D.tasks.push(task);
+  saveData(); renderBoard(); renderSidebarStats(); populateSidebar();
+  closeVoiceModal();
+  // Toast
+  var t = document.createElement('div');
+  t.textContent = '🎙️ Task added!';
+  t.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#7C3AED;color:#fff;padding:10px 22px;border-radius:50px;font-size:13px;font-weight:700;z-index:9999;opacity:0;transition:opacity .3s;';
+  document.body.appendChild(t);
+  setTimeout(function(){t.style.opacity='1';},10);
+  setTimeout(function(){t.style.opacity='0';setTimeout(function(){t.remove();},300);},2200);
+}
+
+function closeVoiceModal() { el('voiceModal').style.display = 'none'; }
+
 async function callAI(prompt, history) {
   var SYS = 'You are LCC Assistant, a warm helpful productivity AI for '+CFG.u1Name+(CFG.solo?'':' and '+CFG.u2Name)+'. Keep responses concise and actionable.';
   // Primary: Supabase Edge Function (key stored server-side as secret)
@@ -3058,6 +3197,62 @@ async function wsGenAgenda() {
   </div>
 </div>
 <button id="fabAdd" onclick="openQuickAdd()" style="position:fixed;bottom:80px;right:76px;z-index:300;width:52px;height:52px;border-radius:50%;border:none;background:linear-gradient(135deg,#FF6B35,#FF8C42);box-shadow:0 4px 20px rgba(255,107,53,.4);cursor:pointer;color:#fff;font-size:28px;font-weight:300;display:flex;align-items:center;justify-content:center;transition:opacity .3s;" title="Add Task">+</button>
+<button id="voiceFab" onclick="startVoiceCapture()" title="Voice Task">
+  <svg viewBox="0 0 24 24" fill="none" style="width:22px;height:22px;"><rect x="9" y="2" width="6" height="12" rx="3" fill="#fff"/><path d="M5 11a7 7 0 0014 0" stroke="#fff" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="18" x2="12" y2="22" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+</button>
+<div id="voiceListening" style="display:none;">
+  <div style="color:#A855F7;font-size:40px;margin-bottom:8px;">🎙️</div>
+  <div class="mic-wave"><span></span><span></span><span></span><span></span><span></span></div>
+  <div id="voiceLiveText" style="color:#fff;font-size:14px;max-width:280px;text-align:center;margin-top:8px;min-height:20px;opacity:.8;"></div>
+  <div style="color:#C4A882;font-size:12px;margin-top:16px;">Tap mic again to stop</div>
+  <button onclick="stopVoiceCapture()" style="margin-top:20px;padding:10px 28px;background:#EF4444;color:#fff;border:none;border-radius:50px;font-size:14px;font-weight:700;cursor:pointer;font-family:Nunito,sans-serif;">Stop</button>
+</div>
+<div id="voiceModal" style="display:none;">
+  <div id="voiceModalCard">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+      <div style="width:36px;height:36px;border-radius:12px;background:linear-gradient(135deg,#7C3AED,#A855F7);display:flex;align-items:center;justify-content:center;font-size:18px;">🎙️</div>
+      <div>
+        <div style="font-size:15px;font-weight:800;color:var(--tx);">Voice Task</div>
+        <div style="font-size:11px;color:var(--mu);">Review and confirm</div>
+      </div>
+      <button onclick="closeVoiceModal()" style="margin-left:auto;border:none;background:none;font-size:20px;color:var(--mu);cursor:pointer;">✕</button>
+    </div>
+    <div id="voiceTranscript" style="font-size:12px;color:var(--mu);background:var(--al);border-radius:10px;padding:8px 12px;margin-bottom:14px;font-style:italic;line-height:1.5;"></div>
+    <div style="margin-bottom:10px;">
+      <div style="font-size:10px;font-weight:700;color:var(--mu);letter-spacing:.8px;margin-bottom:4px;">TASK</div>
+      <input id="vcTaskText" style="width:100%;padding:10px 12px;border:1.5px solid var(--bd);border-radius:10px;font-size:14px;font-weight:600;font-family:Nunito,sans-serif;background:var(--sf);color:var(--tx);outline:none;box-sizing:border-box;" placeholder="Task description"/>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
+      <div style="flex:1;">
+        <div style="font-size:10px;font-weight:700;color:var(--mu);letter-spacing:.8px;margin-bottom:4px;">BUCKET</div>
+        <select id="vcBucket" style="width:100%;padding:9px 10px;border:1.5px solid var(--bd);border-radius:10px;font-size:13px;font-family:Nunito,sans-serif;background:var(--sf);color:var(--tx);outline:none;"></select>
+      </div>
+      <div style="flex:1;">
+        <div style="font-size:10px;font-weight:700;color:var(--mu);letter-spacing:.8px;margin-bottom:4px;">PRIORITY</div>
+        <select id="vcPriority" style="width:100%;padding:9px 10px;border:1.5px solid var(--bd);border-radius:10px;font-size:13px;font-family:Nunito,sans-serif;background:var(--sf);color:var(--tx);outline:none;">
+          <option value="P1">⚡ P1 Critical</option>
+          <option value="P2" selected>📌 P2 Important</option>
+          <option value="P3">🌱 P3 Someday</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:16px;">
+      <div style="flex:1;">
+        <div style="font-size:10px;font-weight:700;color:var(--mu);letter-spacing:.8px;margin-bottom:4px;">TARGET DATE</div>
+        <input type="date" id="vcTarget" style="width:100%;padding:9px 10px;border:1.5px solid var(--bd);border-radius:10px;font-size:13px;font-family:Nunito,sans-serif;background:var(--sf);color:var(--tx);outline:none;box-sizing:border-box;"/>
+      </div>
+      <div style="flex:1;">
+        <div style="font-size:10px;font-weight:700;color:var(--mu);letter-spacing:.8px;margin-bottom:4px;">FOR</div>
+        <select id="vcOwner" style="width:100%;padding:9px 10px;border:1.5px solid var(--bd);border-radius:10px;font-size:13px;font-family:Nunito,sans-serif;background:var(--sf);color:var(--tx);outline:none;">
+          <option value="">Me</option>
+          <option value="joint">Joint</option>
+        </select>
+      </div>
+    </div>
+    <div id="vcParseStatus" style="font-size:11px;color:var(--mu);text-align:center;margin-bottom:10px;min-height:16px;"></div>
+    <button onclick="confirmVoiceTask()" style="width:100%;padding:14px;background:linear-gradient(135deg,#7C3AED,#A855F7);color:#fff;border:none;border-radius:14px;font-size:15px;font-weight:800;cursor:pointer;font-family:Nunito,sans-serif;">✓ Add Task</button>
+  </div>
+</div>
 <div data-copyright style="text-align:center;padding:16px;font-size:10px;color:#C4A882;font-family:Nunito,sans-serif;">&copy; 2026 Dr. Nimish Pankhedkar. All rights reserved.</div>
 
 </body>
